@@ -167,11 +167,13 @@ class Agent(object):
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
                 print('-------------------')
-                print('step = ',self.step)
+                print('step = ', self.step)
+
                 if self.step == 0:
                     action = self.first_forward(observation)
                 else :
                     action = self.forward(observation)
+                
                 if self.processor is not None:
                     action = self.processor.process_action(action)
                 reward = np.float32(0)

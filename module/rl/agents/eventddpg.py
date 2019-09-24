@@ -210,7 +210,6 @@ class eventDDPGAgent(Agent):
         # Select an action.
         state = self.memory.get_recent_state(observation)
         action = np.array([self.select_action(state)[0]])
-        print(type(action),action)
 
         # Book-keeping.
         self.recent_observation = observation
@@ -229,6 +228,8 @@ class eventDDPGAgent(Agent):
             action = np.array([action_candidate])
         print(action_candidate,decision)
         print('action = ', type(action), action)
+        if action is None:
+            print('Error')
 
         # Book-keeping.
         self.recent_observation = observation

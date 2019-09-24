@@ -166,11 +166,9 @@ class Agent(object):
                 callbacks.on_step_begin(episode_step)
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
-                print('step = ',self.step)
                 action = self.forward(observation)
                 if self.processor is not None:
                     action = self.processor.process_action(action)
-                print(action.shape)
                 reward = np.float32(0)
                 accumulated_info = {}
                 done = False
