@@ -343,6 +343,8 @@ class Agent(object):
 
         self._on_test_begin()
         callbacks.on_train_begin()
+
+        self.data_log = np.zeros((nb_episodes, nb_max_episode_steps, 3))
         for episode in range(nb_episodes):
             callbacks.on_episode_begin(episode)
             episode_reward = 0.
@@ -466,6 +468,9 @@ class Agent(object):
             callbacks.on_episode_end(episode, episode_logs)
 
             his = np.array(his)
+            if his.shape != self.data_log[0].shape:
+                his = np.vstack((his, np.zeros((nb_max_episode_steps - his.shape[0], 3))))
+            self.data_log[episode] = his
             col = ['red','blue','magenta']
             ylabel = [ 'θ (rad)', 'u (Nm)', 'γ']
             if graph:
