@@ -7,7 +7,7 @@ import numpy as np
 import keras.backend as K
 import keras.optimizers as optimizers
 
-from rl.core import Agent
+from ..eventcore import Agent
 from rl.random import OrnsteinUhlenbeckProcess
 from rl.util import *
 
@@ -25,7 +25,7 @@ class eventDDPGAgent(Agent):
     def __init__(self, nb_actions, actor, critic, critic_action_input, memory,
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
-                 random_process=None, custom_model_objects={}, target_model_update=.001, **kwargs):
+                 random_process=None, custom_model_objects={}, target_model_update=.001,clip_com=0.1, **kwargs):
         if hasattr(actor.output, '__len__') and len(actor.output) > 1:
             raise ValueError('Actor "{}" has more than one output. DDPG expects an actor that has a single output.'.format(actor))
         if hasattr(critic.output, '__len__') and len(critic.output) > 1:
@@ -35,7 +35,7 @@ class eventDDPGAgent(Agent):
         if not hasattr(critic.input, '__len__') or len(critic.input) < 2:
             raise ValueError('Critic "{}" does not have enough inputs. The critic must have at exactly two inputs, one for the action and one for the observation.'.format(critic))
 
-        super(DDPGAgent, self).__init__(**kwargs)
+        super(eventDDPGAgent, self).__init__(**kwargs)
 
         # Soft vs hard target model updates.
         if target_model_update < 0:
@@ -51,6 +51,13 @@ class eventDDPGAgent(Agent):
             warnings.warn('`delta_range` is deprecated. Please use `delta_clip` instead, which takes a single scalar. For now we\'re falling back to `delta_range[1] = {}`'.format(delta_range[1]))
             delta_clip = delta_range[1]
 
+        if random_process == 'OrnsteinUhlenbeckProcess':
+            random_process = OrnsteinUhlenbeckProcess(1., size=3)
+        elif random_process is None:
+            pass
+        else:
+            assert False, 'Unknown Random Process'
+
         # Parameters.
         self.nb_actions = nb_actions
         self.nb_steps_warmup_actor = nb_steps_warmup_actor
@@ -63,6 +70,7 @@ class eventDDPGAgent(Agent):
         self.train_interval = train_interval
         self.memory_interval = memory_interval
         self.custom_model_objects = custom_model_objects
+        self.clip_com = clip_com
 
         # Related objects.
         self.actor = actor
@@ -196,7 +204,7 @@ class eventDDPGAgent(Agent):
     def select_action(self, state):
         batch = self.process_state_batch([state])
         action = self.actor.predict_on_batch(batch).flatten()
-        assert action.shape == (self.nb_actions,)
+        #assert action.shape == (self.nb_actions,)
 
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
@@ -244,6 +252,8 @@ class eventDDPGAgent(Agent):
         # Train the network on a single stochastic batch.
         can_train_either = self.step > self.nb_steps_warmup_critic or self.step > self.nb_steps_warmup_actor
         if can_train_either and self.step % self.train_interval == 0:
+            # Make a mini-batch to learn. So batch learning is done in every time steps.
+            #This is based on the paper.
             experiences = self.memory.sample(self.batch_size)
             assert len(experiences) == self.batch_size
 
@@ -261,6 +271,7 @@ class eventDDPGAgent(Agent):
                 terminal1_batch.append(0. if e.terminal1 else 1.)
 
             # Prepare and validate parameters.
+            # Change batch class from list to np.ndarray
             state0_batch = self.process_state_batch(state0_batch)
             state1_batch = self.process_state_batch(state1_batch)
             terminal1_batch = np.array(terminal1_batch)
@@ -268,7 +279,7 @@ class eventDDPGAgent(Agent):
             action_batch = np.array(action_batch)
             assert reward_batch.shape == (self.batch_size,)
             assert terminal1_batch.shape == reward_batch.shape
-            assert action_batch.shape == (self.batch_size, self.nb_actions)
+            assert action_batch.shape == (self.batch_size, self.nb_actions), (action_batch.shape, (self.batch_size, self.nb_actions))
 
             # Update critic, if warm up is over.
             if self.step > self.nb_steps_warmup_critic:
@@ -304,7 +315,7 @@ class eventDDPGAgent(Agent):
                 # TODO: implement metrics for actor
                 if len(self.actor.inputs) >= 2:
                     inputs = state0_batch[:]
-                else:
+                else: #now we get len = 1
                     inputs = [state0_batch]
                 if self.uses_learning_phase:
                     inputs += [self.training]
