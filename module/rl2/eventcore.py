@@ -6,6 +6,7 @@ import numpy as np
 from keras.callbacks import History
 
 import matplotlib.pyplot as plt
+import rl2.barrier_certificate as bc
 
 from rl.callbacks import (
     CallbackList,
@@ -193,6 +194,9 @@ class Agent(object):
                         gama = 1
                         action_with_decision = action_candidate
                         action = np.array([action_candidate[0]])
+                    x = np.array([np.arcsin(observation[1]), observation[2]])
+                    action = bc.u_cbf(x, action[0], env.action_space.low, env.action_space.high)
+                    action_with_decision[0] = action
                     self.recent_action = action_with_decision
                 if self.processor is not None:
                     action = self.processor.process_action(action)
