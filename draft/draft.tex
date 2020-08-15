@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 8.12}}}
+\title{\large{\bf{進捗報告 8.15}}}
 \author{M2 竹内 維吹}
 %\date{Jul. 7, 2020}
 \date{\today}
@@ -138,10 +138,39 @@
 として与えることができる.
 
 \section{現状}
-図2にプロットされている状態$s$に対して, $U(x)$の元を入力しているにもかかわらず, 次時刻の$h(s_{t+1})$が0よりも小さくなる時があります.
+図2にプロットされている状態$s$に対して, $U(x)$の元を入力しているにもかかわらず, 「シミュレーション上の」次時刻の$h(s_{t+1})$が0よりも小さくなる時があります. \par
+その原因を探るべく, 水曜日のzoomでのMTGで, ~$C$内での~$U(x)$をプロットしてみるということも試してみようと話していた(?)ので, 見てみました. \newpage
+~
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=7cm]{theta_thetadot.png}
+ 	\caption{$\theta, \dot{\theta}$平面への投影}
+\end{figure}\\
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=7cm]{theta_action.png}
+ 	\caption{$\theta, a$平面への投影}
+\end{figure}\\
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=7cm]{thetadot_action.png}
+ 	\caption{$\dot{\theta}, a$平面への投影}
+\end{figure}\par
 
+$C$の要素の$\theta, \dot{\theta}$に対して, $U(x)$の要素を5個づつ等間隔に選び, 3次元空間上にプロットしました. 赤色の点は$C$のフチで, 青色の点は$C$の内部の$\theta, \dot{\theta}$に対する$U(x)$を示しています. 図4を見ると, $\theta$が$-1$に近くても, 負の方向への入力を許していることがわかります. さらに図5を見ると, その場合には$\dot{\theta}$が正方向にあるとわかります. これは直感通り(フチにいても, 逆方向の速度があればOK, という直感)なので, 大まかには$U(x)$を正しく設定できていると思います.\par
+なぜそれでも制約が壊れるかを調べるため, $C$のフチの状態$s = [-0.99006819, -0.16353134]$を1つ取ってきて,離散化定数$\delta_t$を変えてシミュレーションしてみました. \par
+この時$U(x)$は$[-4.192729709679552, 10.0]$と計算されるため, 入力$a = -4.192729709679552$を加えてみました. 離散化定数$\delta_t=0.05$のときは
+\begin{align*}
+	s^{\prime} &= [-1.06104261 -1.44708933] \\
+	h(x) &= -0.9634384239222334
+\end{align*}
+となるのに対して, 離散化定数$\delta_t=0.005$のときは
+\begin{align*}
+	s^{\prime} &= [-0.99015624 -0.17609127] \\
+	h(x) &= 0.0071873749226185266
+\end{align*}
+となり,状態制約を満たします.ここから, 先生のおっしゃっていた通り, 離散化エラーが問題であったことがわかりました. さらに, 離散化定数を限りなく0に近づければ$h(s) = 1- \theta^2- \alpha\dot{\theta}^2$によって安全強化学習できそうだと予測できると思います.
 
-\color{black}
 \begin{thebibliography}{10}
 \bibitem{event}
 D. Baumann, J. J. Zhu, G. Martius, and S. Trimpe. “Deep Reinforcement Learning for Event-Triggered Control."  \textit{In Proc. of the 57th IEEE International Conference on Decision and Control}, 2018.
