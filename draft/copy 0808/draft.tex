@@ -1,0 +1,122 @@
+\documentclass{jsarticle}
+\usepackage[top=20truemm,bottom=20truemm,left=25truemm,right=25truemm]{geometry}
+\usepackage{amsmath,ascmac,url,amsfonts,bm,here,algorithmic,algorithm,amsthm,color}
+\usepackage[dvipdfmx]{graphicx}
+\newcommand{\argmax}{\mathop{\rm argmax}\limits}
+\newcommand{\argmin}{\mathop{\rm argmin}\limits} 
+\newcommand{\expect}{\mathbb{E}} 
+\newcommand{\trans}[1]{#1^{\top}}
+\newcommand{\pdif}[2]{\frac{\partial#1}{\partial#2}}
+\makeatletter
+  \def\@maketitle{
+  \newpage\null
+  \vskip 2em
+    \mbox{}\hfill
+    \begin{flushleft}
+    \textbf{制御システム論分野研究会資料}
+    \end{flushleft}
+    \begin{flushright}
+    {\lineskip .5em
+      \begin{tabular}[t]{c}
+        \@date \\
+        \@author
+      \end{tabular}\par}
+        \end{flushright}
+  \begin{center}
+  \let\footnote\thanks
+    {\LARGE \@title \par}
+    \vskip 1.5em
+  \end{center}
+    \vskip 1em
+  \par}
+\makeatother
+\title{\large{\bf{修論に向けてのテーマ草案}}}
+\author{M2 竹内 維吹}
+%\date{Jul. 7, 2020}
+\date{\today}
+\begin{document}
+\maketitle
+
+
+\section{仮定}
+実環境システムが以下のような入力アフィン系であると仮定する.
+\begin{equation}
+	s_{t+1}=f_{true}(s_t)+g(s_t)a_t \label{true_dynamics}
+\end{equation}
+ここで,~$s_t, a_t$はそれぞれ状態ベクトル, 入力ベクトルである.また, $f_{true}, g$はリプシッツ連続であるとする.\par
+次に, 強化学習エージェントが上記のダイナミクスの公称知モデルが既知であると仮定する.つまりエージェントが関数$f,g$を与えられ, 式(\ref{true_dynamics})が以下のように変形される.
+\begin{equation}
+	s_{t+1}=f(s_t)+g(s_t)a_t+d(s_t) \label{pred_dynamics}
+\end{equation}
+ここで,~$d(s_t)$は未知関数である(これをガウス過程回帰を用いて推定する). \par
+
+\section{準備}
+\subsection{安全領域と制御バリア関数}
+前節の仮定のもと, マルコフ決定仮定$M=\{S,A,f,g,d,\gamma,r,d_0\}$における安全強化学習法を考えたい. ここで$S$は状態集合,~$A$は入力集合, ~$r$は報酬関数, ~$d_0$は初期状態分布である.安全な強化学習とは, 安全制約(後述)を与える集合$S_{safe}\subset{S}$に対して, $s\in S\backslash S_{safe}$を学習過程において取らないようにするということである. これを$S_{safe}$を前進不変(forward invariant)にするという.\par
+ここで, 安全状態集合を以下のようにある関数$h(s)$に対する優位集合として定義する.
+\begin{equation}
+	S_{safe}=\{s\in S~|~h(s)\geq 0\}
+\end{equation}
+次に上記の安全状態集合を前進不変にする安全入力制約を定式化するため,制御バリア関数を導入する. これは以下を満たす関数$h(s)$の集合を表すものである.~($\kappa(\cdot)$は$\kappa(0)=0$を満たす狭義単調増加関数)
+\begin{equation}
+	\sup_{a\in A}\left\{\pdif{h}{s}(f(s)+g(s)a+d(s))+\kappa(h(s))\right\}\geq 0, \forall s\in S_{safe}
+\end{equation}
+もし,安全状態集合$S_{safe}$を定義する関数$h(s)$が制御バリア関数であるならば, $\pdif{h}{s}(f(s)+g(s)a+d(s))+\kappa(h(s))\geq 0$を満たす入力$a\in A$が,全ての$s\in S_{safe}$に対して少なくとも1つ存在することを保証する.よって, 状態$s$に対する安全入力集合は以下のように与えることができる. 
+
+\begin{equation}
+	U(s)=\left\{a\in A~|~\pdif{h}{s}(f(s)+g(s)a+d(s))+\kappa(h(s))\geq 0\right\}, \forall s\in S_{safe}
+\end{equation}
+$U(s)$を$s$に対する安全入力集合と呼ぶ理由は, $a\in U(s)$を入力することにより, $S_{safe}$を前進不変にできるからである.上記の記法を用いると, 安全方策$\pi_{safe}(a|s)$は以下のクラス$\Pi_{safe}$に限定できる.
+\begin{equation}
+	\Pi_{safe} = \left\{\pi~|~\sum_{a\in U(s)}\pi(a|s)=1\right\}
+\end{equation}
+この$\Pi_{safe}$は自明に$\Pi=\left\{\pi~|~\sum_{a\in A}\pi(a|s)=1\right\}$のサブクラスになる.
+
+
+\subsection{安全領域の拡張}
+\cite{quad}では, 式(\ref{pred_dynamics})における$d(s)$をガウス過程回帰により,
+\begin{equation}
+	m(s)-k_{\delta}\sigma(s)\leq d(s) \leq m(s)+k_{\delta}\sigma(s)
+\end{equation}
+という$\pm k_{\delta}\sigma$までの信頼区間を推定し, 以下の最適化問題を解くことで制御バリア関数を決定していた.
+\begin{align}
+	\max_{\mu} &~\textrm{vol}(S_{safe}) \nonumber \\ 
+	\textrm{s.t.} &~ \sup_{a\in A}\left\{\pdif{h_{\mu}}{s}(f(s)+g(s)a+m(s))-k_{\delta}\left|\pdif{h_{\mu}}{s}\right|\sigma(s)+\kappa(h_{\mu}(s))\right\}\geq 0 \nonumber
+\end{align}
+ここで, 単項式からなるベクトル値関数$Z(s)$を用いて, 制御バリア関数の候補を$h_{\mu}(s) = 1 - Z(s)^{\top}\mu Z(s)$としている.この$h_{\mu}$は凹関数なので, その優位集合$S_{safe}$は凸集合となる.\par
+$\textrm{vol}(S_{safe})$が大きくなれば, 状態空間の探索可能範囲が広がり$|\sigma(s)|$が小さくすることができるので, $\textrm{vol}(S_{safe})$をより大きくするスキームを作ることができる\cite{quad}.~$|\sigma(s)|$は,その大きさが大きい$s$から探索することで効率よく小さくしていくことが可能である. しかし\cite{quad}ではその$s$に移動させるための入力$u^{\textrm{explore}}$が既知であるものとしてした.したがって今後の研究にむけて,状態空間探索方策をエージェントが自律的に学習できるようにしたい.そのヒントとして次節の\cite{MOPO}がある.
+
+\subsection{モデル推定誤差を考慮した強化学習}
+
+\section{研究の目的}
+今後研究を進めていくにあたり, 以下の2つを目標に据えたい.
+\begin{itemize}
+	\item{\cite{quad}で考慮されていなかった探索方策をエージェントが自律的に決定する手法の開発}
+	\item{$D_{KL}(\argmax_{\pi\in\Pi}J(\pi)|\argmax_{\pi\in\Pi_{safe}}J(\pi))=0$とできる条件についての調査}
+\end{itemize}
+
+まず1つ目については, \cite{quad}で紹介されていた制御バリア関数と未知関数$d(s)$の学習に, \cite{MOPO}を組み合わせることで開発していきたい.\par
+2つ目については, $S_{safe}$の凸性を活かしたい. コスト$r(s,a)$が$s\in S_{safe}$ならどんな$a$に対しても$s\in S\backslash S_{safe}$の$r(s,a)$よりも大きくあればいいのじゃないか？\par
+
+
+
+未知関数$d(s)$の学習が完了すれば, それを用いたオフラインmodel-based強化学習MOPOを用いる
+
+quadの内容
+modelbasedにした時の評価関数の差
+状態制約による評価関数の差
+
+
+\begin{thebibliography}{10}
+\bibitem{offline}
+S. Levine, A. Kumar, G. Tucker and J. Fu. “Offline Reinforcement Learning: Tutorial, Review, and Perspectives on Open Problems, ” \textit{arXiv preprint arXiv: 2005.01643}, 2020.
+\bibitem{quad}
+Li Wang, Evangelos A Theodorou, and Magnus Egerstedt. “Safe learning of quadrotor dynamics using barrier certificates," \textit{In 2018 IEEE International Conference on Robotics and Automation (ICRA)}, pages 2460-2465, 2018
+\bibitem{MOPO}
+T. Yu, G. Thomas, L.Yu, S. Ermon, J. Zou, S. Levine, C. Finn and T. Ma. “MOPO: Model-based Offline Policy Optimization,” \textit{arXiv preprint arXiv: 2005.13239}, 2020.
+
+
+\end{thebibliography}
+
+ 
+\end{document}

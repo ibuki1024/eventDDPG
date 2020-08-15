@@ -9,20 +9,29 @@ def u_cbf(x, u_candidate, ratio):
         out = rmin
     elif u_candidate > rmax:
         out = rmax
+    else:
+        pass
     return np.array([out])
 
 
-def _u_of_x(x, ratio, k=4):
+def _h(x, alpha):
+        return 1 - x[0]**2 - alpha*x[1]**2
+
+
+def _u_of_x(x, ratio, k=2.6, alpha=0.4):
     assert x.shape[0]==2, 'shape_error'
+    al = alpha
     m = 1
     l = 1
     g = 10.
-    dt = .05
-    gamma = pow(dt, -k)
+    gamma = pow(10, k)
     th, thd = x
-    if th != 0:
-        u_thres = np.roots([-(6*th*dt**2)/(m*l**2), -(2*th**2 + 2*th*thd*dt + 3*g/l*th*np.sin(th)*dt**2 + gamma*(th**2-1))])[0]
-        if th < 0:
+    if thd == 0:
+        p = abs(m*g*np.sin(th)/2)
+        ran = [-ratio, -p] if th > 0 else [p, ratio]
+    else:
+        u_thres = np.roots([-(6*al*thd)/(m*l**2), -(2*th*thd + 3*al*g/l*thd*np.sin(th) - gamma*_h(x, al))])[0]
+        if thd < 0:
             u_thres = max(u_thres, -ratio)
             ran = [u_thres, ratio]
         else:
