@@ -2,7 +2,7 @@ import gym2
 
 
 class TimeLimit(gym2.Wrapper):
-    def __init__(self, env, max_episode_steps=None):
+    def __init__(self, env, dt, max_episode_steps=None):
         super(TimeLimit, self).__init__(env)
         if max_episode_steps is None and self.env.spec is not None:
             max_episode_steps = env.spec.max_episode_steps
@@ -10,10 +10,11 @@ class TimeLimit(gym2.Wrapper):
             self.env.spec.max_episode_steps = max_episode_steps
         self._max_episode_steps = max_episode_steps
         self._elapsed_steps = None
+        self._dt = dt
 
     def step(self, action):
         assert self._elapsed_steps is not None, "Cannot call env.step() before calling reset()"
-        observation, reward, done, info = self.env.step(action)
+        observation, reward, done, info = self.env.step(action, self._dt)
         self._elapsed_steps += 1
         if self._elapsed_steps >= self._max_episode_steps:
             info['TimeLimit.truncated'] = not done

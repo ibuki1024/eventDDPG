@@ -4,6 +4,10 @@ from gym2.utils import seeding
 import numpy as np
 from os import path
 
+import sys
+sys.path.append('../../../')
+from rl2.barrier_certificate import h, set_alpha
+
 
 class PendulumEnv(gym2.Env):
     metadata = {
@@ -38,19 +42,18 @@ class PendulumEnv(gym2.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def step(self, u):
+    def step(self, u, dt=.05):
         th, thdot = self.state  # th := theta
 
         g = self.g
         m = self.m
         l = self.l
-        dt = self.dt
 
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
         self.last_u = u  # for rendering
         costs = angle_normalize(th) ** 2 + .1 * thdot ** 2 + .001 * (u ** 2)
 
-        newthdot = thdot + (3 * g / (2 * l) * np.sin(th) + 3. / (m * l ** 2) * u) * dt
+        newthdot = thdot + (- 3 * g / (2 * l) * np.sin(th + np.pi) + 3. / (m * l ** 2) * u) * dt
         newth = th + newthdot * dt
         newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
 
@@ -60,8 +63,11 @@ class PendulumEnv(gym2.Env):
     # modify to change start position
     def reset(self):
         high = np.array([0, 1]) # start with inverted point
-        self.state = self.np_random.uniform(low=-high, high=high)
-        self.state[0] += np.random.randn() / 5. # add noise to explore around top
+        while 1:
+            self.state = self.np_random.uniform(low=-high, high=high)
+            self.state[0] += np.random.randn() / 5. # add noise to explore around top
+            if h(self.state, set_alpha()) > 0:
+                break
         self.last_u = None
         return self._get_obs()
 

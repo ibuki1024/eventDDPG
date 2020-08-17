@@ -1,6 +1,6 @@
-import gym
-from gym import error
-from gym.utils import closer
+import gym2
+from gym2 import error
+from gym2.utils import closer
 
 env_closer = closer.Closer()
 
@@ -37,7 +37,7 @@ class Env(object):
     action_space = None
     observation_space = None
 
-    def step(self, action):
+    def step(self, action, dt):
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state.

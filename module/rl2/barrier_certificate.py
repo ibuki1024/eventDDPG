@@ -1,14 +1,16 @@
 import numpy as np
 
+def set_alpha():
+    return 2.
 
 def u_cbf(x, u_candidate, ratio):
     ran = _u_of_x(x, ratio)
     rmin, rmax = ran[0], ran[1]
     out = u_candidate
-    if h(x) < 1e-3:
-        if u_candidate < rmin:
+    if h(x) < 1e-1:
+        if x[0] < 0:
             out = rmax
-        elif u_candidate > rmax:
+        else:
             out = rmin
     else:
         if u_candidate < rmin:
@@ -18,11 +20,11 @@ def u_cbf(x, u_candidate, ratio):
     return np.array([out])
 
 
-def h(x, alpha=0.4):
+def h(x, alpha=set_alpha()):
         return 1 - x[0]**2 - alpha*x[1]**2
 
 
-def _u_of_x(x, ratio, k=2.6, alpha=0.4):
+def _u_of_x(x, ratio, k=2.6, alpha=set_alpha()):
     assert x.shape[0]==2, 'shape_error'
     al = alpha
     m = 1

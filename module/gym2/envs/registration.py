@@ -81,7 +81,8 @@ class EnvRegistry(object):
     def __init__(self):
         self.env_specs = {}
 
-    def make(self, path, max_steps, **kwargs):
+    def make(self, path, dt, **kwargs):
+        max_steps = 200 * 0.05 / dt # 200 when dt = 0.05
         if len(kwargs) > 0:
             logger.info('Making new env: %s (%s)', path, kwargs)
         else:
@@ -96,7 +97,7 @@ class EnvRegistry(object):
             patch_deprecated_methods(env)
         if env.spec.max_episode_steps is not None:
             from gym2.wrappers.time_limit import TimeLimit
-            env = TimeLimit(env, max_episode_steps=max_steps)
+            env = TimeLimit(env, dt, max_episode_steps=max_steps)
         return env
 
     def all(self):
@@ -141,8 +142,8 @@ registry = EnvRegistry()
 def register(id, **kwargs):
     return registry.register(id, **kwargs)
 
-def make(id, max_steps, **kwargs):
-    return registry.make(id, max_steps, **kwargs)
+def make(id, dt, **kwargs):
+    return registry.make(id, dt, **kwargs)
 
 def spec(id):
     return registry.spec(id)

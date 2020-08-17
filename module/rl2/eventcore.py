@@ -141,6 +141,7 @@ class Agent(object):
         did_abort = False
         #In the firststep of each episode, we must communicate.
         episode_start_step = 0
+        csv_content = []
         try:
             while self.step < nb_steps:
                 if observation is None:  # start of a new episode
@@ -188,6 +189,7 @@ class Agent(object):
                 violation = bc.h(np.array([theta, observation[2]])) < 0
                 dsl = 1 if violation else 0
                 cbf_log[self.step][0] = dsl
+                csv_content.append([theta, observation[2], bc.h(np.array([theta, observation[2]]))])
 
                 # Run a single step.
                 callbacks.on_step_begin(episode_step)
