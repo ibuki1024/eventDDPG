@@ -45,7 +45,7 @@ class EnvSpec(object):
         match = env_id_re.search(id)
         if not match:
             raise error.Error('Attempted to register malformed environment ID: {}. (Currently all IDs must be of the form {}.)'.format(id, env_id_re.pattern))
-        self._env_name = match.group(1)            
+        self._env_name = match.group(1)
 
     def make(self, **kwargs):
         """Instantiates an instance of the environment with appropriate kwargs"""
@@ -81,7 +81,7 @@ class EnvRegistry(object):
     def __init__(self):
         self.env_specs = {}
 
-    def make(self, path, **kwargs):
+    def make(self, path, max_steps, **kwargs):
         if len(kwargs) > 0:
             logger.info('Making new env: %s (%s)', path, kwargs)
         else:
@@ -96,7 +96,7 @@ class EnvRegistry(object):
             patch_deprecated_methods(env)
         if env.spec.max_episode_steps is not None:
             from gym2.wrappers.time_limit import TimeLimit
-            env = TimeLimit(env, max_episode_steps=env.spec.max_episode_steps)
+            env = TimeLimit(env, max_episode_steps=max_steps)
         return env
 
     def all(self):
@@ -141,8 +141,8 @@ registry = EnvRegistry()
 def register(id, **kwargs):
     return registry.register(id, **kwargs)
 
-def make(id, **kwargs):
-    return registry.make(id, **kwargs)
+def make(id, max_steps, **kwargs):
+    return registry.make(id, max_steps, **kwargs)
 
 def spec(id):
     return registry.spec(id)

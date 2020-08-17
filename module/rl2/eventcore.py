@@ -450,7 +450,6 @@ class Agent(object):
                 for _ in range(action_repetition):
                     callbacks.on_action_begin(action)
                     observation, r, d, info = env.step(action)
-                    print(f'{self.step} : sin(theta) = {observation[1]}')
                     observation = deepcopy(observation)
                     if self.processor is not None:
                         observation, r, d, info = self.processor.process_step(observation, r, d, info)
