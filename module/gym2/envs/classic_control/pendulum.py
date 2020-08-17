@@ -50,13 +50,14 @@ class PendulumEnv(gym2.Env):
         self.last_u = u  # for rendering
         costs = angle_normalize(th) ** 2 + .1 * thdot ** 2 + .001 * (u ** 2)
 
-        newthdot = thdot + (-3 * g / (2 * l) * np.sin(th + np.pi) + 3. / (m * l ** 2) * u) * dt
+        newthdot = thdot + (3 * g / (2 * l) * np.sin(th) + 3. / (m * l ** 2) * u) * dt
         newth = th + newthdot * dt
         newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
 
         self.state = np.array([newth, newthdot])
         return self._get_obs(), -costs, False, {}
 
+    # modify to change start position
     def reset(self):
         high = np.array([0, 1]) # start with inverted point
         self.state = self.np_random.uniform(low=-high, high=high)

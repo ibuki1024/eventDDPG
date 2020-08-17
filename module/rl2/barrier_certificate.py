@@ -5,16 +5,20 @@ def u_cbf(x, u_candidate, ratio):
     ran = _u_of_x(x, ratio)
     rmin, rmax = ran[0], ran[1]
     out = u_candidate
-    if u_candidate < rmin:
-        out = rmin
-    elif u_candidate > rmax:
-        out = rmax
+    if _h(x) < 1e-3:
+        if u_candidate < rmin:
+            out = rmax
+        elif u_candidate > rmax:
+            out = rmin
     else:
-        pass
+        if u_candidate < rmin:
+            out = rmin
+        elif u_candidate > rmax:
+            out = rmax
     return np.array([out])
 
 
-def _h(x, alpha):
+def _h(x, alpha=0.4):
         return 1 - x[0]**2 - alpha*x[1]**2
 
 

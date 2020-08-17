@@ -16,6 +16,15 @@ from rl.callbacks import (
     Visualizer
 )
 
+def _obs_to_rad(observation):
+        assert observation.shape[0] == 3, 'shape error'
+        cos, sin = observation[:2]
+        sc, ss = np.sign(cos), np.sign(sin)
+        if sc * ss == 1:
+            theta = np.arccos(cos) if sc == 1 else -np.arccos(cos)
+        else:
+            theta = np.arccos(cos) if sc == -1 else -np.arccos(cos)
+        return theta
 
 class Agent(object):
     """Abstract base class for all implemented agents.
@@ -175,7 +184,7 @@ class Agent(object):
                 assert observation is not None
 
                 # store whether current state is danger. 1 for danger, 0 for safe.
-                theta = np.arcsin(observation[1])
+                theta = _obs_to_rad(observation)
                 violation = theta < -1 or theta > 1
                 dsl = 1 if violation else 0
                 cbf_log[self.step][0] = dsl
@@ -202,7 +211,7 @@ class Agent(object):
                         gama = 1
                         action_with_decision = action_candidate
                         action = np.array([action_candidate[0]])
-                    x = np.array([np.arcsin(observation[1]), observation[2]])
+                    x = np.array([_obs_to_rad(observation), observation[2]])
                     # barrier certification
                     action = bc.u_cbf(x, action[0], ratio)
                     cbf_action = 1 if action_with_decision[0] != action else 0
@@ -295,7 +304,7 @@ class Agent(object):
 
         return history
 
-    def test(self, env, nb_episodes=1, lam=1, action_repetition=1, callbacks=None, visualize=True,
+    def test(self, env, nb_episodes=1, lam=1, action_repetition=1, callbacks=None, visualize=False,
              nb_max_episode_steps=None, nb_max_start_steps=0, start_step_policy=None, verbose=1, graph=False,
              action_view=False, time_mode=False):
         """Callback that is called before training begins.
@@ -403,15 +412,12 @@ class Agent(object):
             first_step = True
             while not done:
                 callbacks.on_step_begin(episode_step)
-                '''pre-written
-                action = self.forward(observation)
-                '''
                 if first_step:
                     gama = 1
                     action = np.array([self.forward(observation, ratio)[0]])
                     action_wo_cbf = action
                     first_step = False
-                    x = np.array([np.arcsin(observation[1]), observation[2]])
+                    x = np.array([_obs_to_rad(observation), observation[2]])
                     action = bc.u_cbf(x, action[0], ratio)
                     cbf_action = 1 if action_wo_cbf != action else 0
                 else:
@@ -427,13 +433,11 @@ class Agent(object):
                     if action_view == True:
                         print("step = ", self.step, ", output of actor network = ", action_with_decision)
                     dif = np.abs(action_candidate[0] - action)
-                    #if (action_candidate[1] > action_candidate[2] or greedy < self.epsilon) and (dif > self.clip_com):
                     if (action_candidate[1] > action_candidate[2] or explore) or time_mode:
-                    #if action_candidate[1] > action_candidate[2] :
                         gama = 1
                         action_with_decision = action_candidate
                         action = np.array([action_candidate[0]])
-                    x = np.array([np.arcsin(observation[1]), observation[2]])
+                    x = np.array([_obs_to_rad(observation), observation[2]])
                     action = bc.u_cbf(x, action[0], ratio)
                     cbf_action = 1 if action_with_decision[0] != action else 0
                     action_with_decision[0] = action
@@ -446,6 +450,7 @@ class Agent(object):
                 for _ in range(action_repetition):
                     callbacks.on_action_begin(action)
                     observation, r, d, info = env.step(action)
+                    print(f'{self.step} : sin(theta) = {observation[1]}')
                     observation = deepcopy(observation)
                     if self.processor is not None:
                         observation, r, d, info = self.processor.process_step(observation, r, d, info)
@@ -463,7 +468,7 @@ class Agent(object):
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     done = True
-                his.append([np.arcsin(observation[1]), np.clip(action, -ratio, ratio), gama, cbf_action])
+                his.append([_obs_to_rad(observation), np.clip(action, -ratio, ratio), gama, cbf_action])
                 self.backward(reward, terminal=done)
                 episode_reward += reward
 
