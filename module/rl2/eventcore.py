@@ -370,7 +370,7 @@ class Agent(object):
         self._on_test_begin()
         callbacks.on_train_begin()
 
-        self.data_log = np.zeros((nb_episodes, nb_max_episode_steps, 4))
+        self.data_log = np.zeros((nb_episodes, nb_max_episode_steps, 5))
         for episode in range(nb_episodes):
             callbacks.on_episode_begin(episode)
             episode_reward = 0.
@@ -466,7 +466,8 @@ class Agent(object):
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     done = True
-                his.append([_obs_to_rad(observation), np.clip(action, -ratio, ratio), gama, cbf_action])
+                hx = bc.h(x)
+                his.append([_obs_to_rad(observation), np.clip(action, -ratio, ratio), gama, cbf_action, hx])
                 self.backward(reward, terminal=done)
                 episode_reward += reward
 
