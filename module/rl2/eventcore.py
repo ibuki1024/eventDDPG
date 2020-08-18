@@ -185,11 +185,8 @@ class Agent(object):
                 assert observation is not None
 
                 # store whether current state is danger. 1 for danger, 0 for safe.
-                theta = _obs_to_rad(observation) 
-                violation = bc.h(np.array([theta, observation[2]])) < 0
-                dsl = 1 if violation else 0
-                cbf_log[self.step][0] = dsl
-                csv_content.append([theta, observation[2], bc.h(np.array([theta, observation[2]]))])
+                theta = _obs_to_rad(observation)
+                cbf_log[self.step][0] = bc.h(np.array([theta, observation[2]]))
 
                 # Run a single step.
                 callbacks.on_step_begin(episode_step)
