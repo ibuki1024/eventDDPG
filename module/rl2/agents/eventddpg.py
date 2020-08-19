@@ -214,11 +214,12 @@ class eventDDPGAgent(Agent):
 
         return action
 
-    def forward(self, observation):
+    def forward(self, observation, ratio):
         # Select an action.
         state = self.memory.get_recent_state(observation)
         #TODO: change the law of selecting action
         action = self.select_action(state)
+        action[0] = action[0] * ratio
 
         # Book-keeping.
         self.recent_observation = observation
