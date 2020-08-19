@@ -106,6 +106,7 @@ class Agent(object):
         loss_ave = 0
         epi = 0
         cbf_log = np.zeros((nb_steps, 2))
+        episode_rewards = []
 
         callbacks = [] if not callbacks else callbacks[:]
 
@@ -280,6 +281,7 @@ class Agent(object):
                         'nb_steps': self.step,
                     }
                     callbacks.on_episode_end(episode, episode_logs)
+                    episode_rewards.append(episode_reward)
 
                     episode += 1
                     observation = None
@@ -293,6 +295,8 @@ class Agent(object):
         callbacks.on_train_end(logs={'did_abort': did_abort})
         self._on_train_end()
         self.cbf_log = np.array(cbf_log)
+        self.episode_rewards = episode_rewards
+        print(callbacks.callbacks[0])
 
         if loss_graph:
             #the number of episode - first warming up 5 episodes
