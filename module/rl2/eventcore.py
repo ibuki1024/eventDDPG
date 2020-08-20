@@ -374,7 +374,7 @@ class Agent(object):
         self._on_test_begin()
         callbacks.on_train_begin()
 
-        self.data_log = np.zeros((nb_episodes, nb_max_episode_steps, 5))
+        self.data_log = np.zeros((nb_episodes, nb_max_episode_steps, 6))
         for episode in range(nb_episodes):
             callbacks.on_episode_begin(episode)
             episode_reward = 0.
@@ -471,7 +471,8 @@ class Agent(object):
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     done = True
                 hx = bc.h(x)
-                his.append([_obs_to_rad(observation), np.clip(action, -ratio, ratio), gama, cbf_action, hx])
+                his.append([_obs_to_rad(observation), observation[2], \
+                                    np.clip(action, -ratio, ratio), gama, cbf_action, hx])
                 self.backward(reward, terminal=done)
                 episode_reward += reward
 
@@ -503,7 +504,7 @@ class Agent(object):
 
             his = np.array(his)
             if his.shape != self.data_log[0].shape:
-                his = np.vstack((his, np.zeros((nb_max_episode_steps - his.shape[0], 4))))
+                his = np.vstack((his, np.zeros((nb_max_episode_steps - his.shape[0], 6))))
             self.data_log[episode] = his
             col = ['red','blue','magenta']
             ylabel = [ 'θ (rad)', 'u (Nm)', 'γ']
