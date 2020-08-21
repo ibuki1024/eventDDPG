@@ -4,16 +4,19 @@ import os
 import warnings
 
 import numpy as np
-import keras.backend as K
-import keras.optimizers as optimizers
+import keras2.backend as K
+import keras2.optimizers as optimizers
 
 from ..eventcore import Agent
-from rl.random import OrnsteinUhlenbeckProcess
-from rl.util import *
+from rl2.random import OrnsteinUhlenbeckProcess
+from rl2.util import *
 
 
 def mean_q(y_true, y_pred):
     return K.mean(K.max(y_pred, axis=-1))
+
+def _inv_tanh(x):
+    return 1/2 * np.log((1+x)/(1-x))
 
 
 # Deep DPG as described by Lillicrap et al. (2015)
@@ -204,7 +207,6 @@ class eventDDPGAgent(Agent):
     def select_action(self, state):
         batch = self.process_state_batch([state])
         action = self.actor.predict_on_batch(batch).flatten()
-        #assert action.shape == (self.nb_actions,)
 
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
@@ -214,12 +216,12 @@ class eventDDPGAgent(Agent):
 
         return action
 
-    def forward(self, observation, ratio):
+    def forward(self, observation):
         # Select an action.
         state = self.memory.get_recent_state(observation)
         #TODO: change the law of selecting action
         action = self.select_action(state)
-        action[0] = action[0] * ratio
+        action[0] = _inv_tanh(action[0])
 
         # Book-keeping.
         self.recent_observation = observation

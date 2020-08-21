@@ -3,12 +3,12 @@ import warnings
 from copy import deepcopy
 
 import numpy as np
-from keras.callbacks import History
+from keras2.callbacks import History
 
 import matplotlib.pyplot as plt
 import rl2.barrier_certificate as bc
 
-from rl.callbacks import (
+from rl2.callbacks import (
     CallbackList,
     TestLogger,
     TrainEpisodeLogger,
@@ -197,7 +197,7 @@ class Agent(object):
                 #action caluculate area
                 if self.step == episode_start_step:
                     gama = 1
-                    action = np.array([self.forward(observation, ratio)[0]])
+                    action = np.array([self.forward(observation)[0]])
                     clip = np.clip(action, -ratio, ratio)
                     x = np.array([_obs_to_rad(observation), observation[2]])
                     if pure:
@@ -214,7 +214,7 @@ class Agent(object):
                     gama = 0
                     action_with_decision = self.recent_action
                     action = np.array([action_with_decision[0]])
-                    action_candidate = self.forward(observation, ratio)
+                    action_candidate = self.forward(observation)
                     dif = np.abs(action_candidate[0] - action)
                     if action_candidate[1] > action_candidate[2] or explore or time_mode:
                         gama = 1
@@ -282,7 +282,7 @@ class Agent(object):
                     # resetting the environment. We need to pass in `terminal=False` here since
                     # the *next* state, that is the state of the newly reset environment, is
                     # always non-terminal by convention.
-                    self.forward(observation, ratio)
+                    self.forward(observation)
                     self.backward(0., terminal=False)
                     episode_start_step = self.step
                     epi += 1
@@ -433,7 +433,7 @@ class Agent(object):
                 callbacks.on_step_begin(episode_step)
                 if first_step:
                     gama = 1
-                    action = np.array([self.forward(observation, ratio)[0]])
+                    action = np.array([self.forward(observation)[0]])
                     action_wo_cbf = action
                     first_step = False
                     x = np.array([_obs_to_rad(observation), observation[2]])
@@ -451,9 +451,9 @@ class Agent(object):
                     gama = 0
                     action_with_decision = self.recent_action
                     action = np.array([action_with_decision[0]])
-                    action_candidate = self.forward(observation, ratio)
+                    action_candidate = self.forward(observation)
                     if action_view == True:
-                        print("step = ", self.step, ", output of actor network = ", action_with_decision)
+                        print("step = ", self.step, ", output of actor network = ", action_candidate[0])
                     dif = np.abs(action_candidate[0] - action)
                     if action_candidate[1] > action_candidate[2] or explore or time_mode:
                         gama = 1
@@ -517,7 +517,7 @@ class Agent(object):
             # resetting the environment. We need to pass in `terminal=False` here since
             # the *next* state, that is the state of the newly reset environment, is
             # always non-terminal by convention.
-            self.forward(observation, ratio)
+            self.forward(observation)
             self.backward(0., terminal=False)
 
             # Report end of episode.
