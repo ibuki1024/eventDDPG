@@ -65,7 +65,7 @@ class Agent(object):
 
     def fit(self, env, nb_steps, lam=1, action_repetition=1, callbacks=None, verbose=1,
             visualize=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
-            nb_max_episode_steps=None, loss_graph=False, time_mode=False):
+            nb_max_episode_steps=None, loss_graph=False, time_mode=False, pure=False):
         """Trains the agent on the given environment.
 
         # Arguments
@@ -193,9 +193,18 @@ class Agent(object):
                 callbacks.on_step_begin(episode_step)
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
+
+                #action caluculate area
                 if self.step == episode_start_step:
                     gama = 1
                     action = np.array([self.forward(observation, ratio)[0]])
+                    clip = np.clip(action, -ratio, ratio)
+                    x = np.array([_obs_to_rad(observation), observation[2]])
+                    if pure:
+                        action = bc.u_cbf_pure(x, action[0], ratio)
+                    else:
+                        action = bc.u_cbf(x, action[0], ratio)
+                    cbf_action = 1 if clip != action else 0
                 else:
                     epsi = np.random.rand()
                     explore = False
@@ -207,19 +216,26 @@ class Agent(object):
                     action = np.array([action_with_decision[0]])
                     action_candidate = self.forward(observation, ratio)
                     dif = np.abs(action_candidate[0] - action)
-                    if (action_candidate[1] > action_candidate[2] or explore) or time_mode:
+                    if action_candidate[1] > action_candidate[2] or explore or time_mode:
                         gama = 1
                         action_with_decision = action_candidate
                         action = np.array([action_candidate[0]])
                     x = np.array([_obs_to_rad(observation), observation[2]])
                     # barrier certification
-                    action = bc.u_cbf(x, action[0], ratio)
-                    cbf_action = 1 if action_with_decision[0] != action else 0
+                    clip = np.clip(action, -ratio, ratio)
+                    if pure:
+                        action = bc.u_cbf_pure(x, action[0], ratio)
+                    else:
+                        action = bc.u_cbf(x, action[0], ratio)
+                    cbf_action = 1 if clip != action else 0
+                    if cbf_action == 1:
+                        gama = 1
                     cbf_log[self.step][1] = cbf_action
                     action_with_decision[0] = action
                     self.recent_action = action_with_decision
                 if self.processor is not None:
                     action = self.processor.process_action(action)
+
                 reward = np.float32(0)
                 accumulated_info = {}
                 done = False
@@ -309,7 +325,7 @@ class Agent(object):
 
     def test(self, env, nb_episodes=1, lam=1, action_repetition=1, callbacks=None, visualize=False,
              nb_max_episode_steps=None, nb_max_start_steps=0, start_step_policy=None, verbose=1, graph=False,
-             action_view=False, time_mode=False):
+             action_view=False, time_mode=False, pure=False):
         """Callback that is called before training begins.
 
         # Arguments
@@ -421,7 +437,10 @@ class Agent(object):
                     action_wo_cbf = action
                     first_step = False
                     x = np.array([_obs_to_rad(observation), observation[2]])
-                    action = bc.u_cbf(x, action[0], ratio)
+                    if pure:
+                        action = bc.u_cbf_pure(x, action[0], ratio)
+                    else:
+                        action = bc.u_cbf(x, action[0], ratio)
                     cbf_action = 1 if action_wo_cbf != action else 0
                 else:
                     epsi = np.random.rand()
@@ -436,13 +455,19 @@ class Agent(object):
                     if action_view == True:
                         print("step = ", self.step, ", output of actor network = ", action_with_decision)
                     dif = np.abs(action_candidate[0] - action)
-                    if (action_candidate[1] > action_candidate[2] or explore) or time_mode:
+                    if action_candidate[1] > action_candidate[2] or explore or time_mode:
                         gama = 1
                         action_with_decision = action_candidate
                         action = np.array([action_candidate[0]])
                     x = np.array([_obs_to_rad(observation), observation[2]])
-                    action = bc.u_cbf(x, action[0], ratio)
-                    cbf_action = 1 if action_with_decision[0] != action else 0
+                    clip = np.clip(action, -ratio, ratio)
+                    if pure:
+                        action = bc.u_cbf_pure(x, action[0], ratio)
+                    else:
+                        action = bc.u_cbf(x, action[0], ratio)
+                    cbf_action = 1 if clip != action else 0
+                    if cbf_action == 1:
+                        gama = 1
                     action_with_decision[0] = action
                     self.recent_action = action_with_decision
 

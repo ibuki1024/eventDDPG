@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 8.15}}}
+\title{\large{\bf{進捗報告 8.20}}}
 \author{M2 竹内 維吹}
 %\date{Jul. 7, 2020}
 \date{\today}
@@ -106,7 +106,7 @@
 \end{equation}とし,~$h(s)=(1-\theta^2-\alpha\dot{\theta}^2), \alpha>0$とおく. すると, 状態制約集合$C$は以下のように分布する. 
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=7cm]{region.png}
+ 	\includegraphics[width=6cm]{region.png}
  	\caption{状態集合$C$}
 \end{figure}\\
 
@@ -138,39 +138,37 @@
 として与えることができる.
 
 \section{実験結果}
-Open-AI Gym Pendulum-v0とKeras-RLを用いてシミュレーションを行ったについて考察する. Keras-RLでは学習を行う合計ステップ数をいくつかのepisodeに分割する. ここではepisodeのステップを2000とし, 合計ステップを600000に設定して実験を行った. 以下では(1):episodeを通して状態制約を満たしているのか, またその時CBFの働きはどうか. (2):イベント駆動制御がなされているか. (3):episodeを通しての蓄積rewardは増えているか
-を確認していく. 
+Open-AI Gym Pendulum-v0とKeras-RLを用いてシミュレーションを行ったについて考察する. Keras-RLでは学習を行う合計ステップ数をいくつかのepisodeに分割する. ここではepisodeのステップを2000とし, 合計ステップを3000000に設定して実験を行った. 計算時間は1回あたり5,6時間である. 以下では(1):episodeを通して状態制約を満たしているのか, またその時CBFの働きはどうか. (2):イベント駆動制御がなされているか. (3):episodeを通しての蓄積rewardは増えているか.
+という観点で結果を確認していく. 
 
 \subsection{CBFによる入力射影ルールの変更}
-ここまで状態$s$における制御入力$\pi(s)$が$U(s)$の元でない場合, $\pi(s)$ではなく, $U(s)$の元のうち最も$\pi(s)$近いものを, 実際にその時刻でシステムに加える入力だとしていた. しかしこの設定で学習を行っても, 方策の改善は見られなかった. 図\ref{pure_reward}は横軸をepisode, 縦軸を各episodeを通してのrewardとして, その変化を示したグラフである. オレンジ線は100episode移動平均線である. この図から, episodeを進めて行っても方策が改善していないとこが見て取れる.
+ここまで状態$s$における制御入力$\pi(s)$が$U(s)$の元でない場合, $\pi(s)$ではなく, $U(s)$の元のうち最も$\pi(s)$近いものを, 実際にその時刻でシステムに加える入力だとしていた. しかしこの設定で学習を行っても, 方策の改善は見られなかった. 図\ref{pure_reward}は横軸をepisode, 縦軸を各episodeを通してのrewardとして, その変化を示したグラフである. オレンジ線は30episode移動平均線である. この図から, episodeを進めて行っても方策が改善せず, また振子を倒立させた(この時は0付近のepisode rewardになる)episodeがほとんどないことが見て取れる.
 \begin{figure}[h]
 	\centering
  	\includegraphics[width=12cm]{pure_reward.png}
- 	\caption{蓄積reward} \label{pure_reward}
+ 	\caption{episode毎の蓄積reward} \label{pure_reward}
 \end{figure}\\
 
-また, 600000ステップの学習によって得られた$\pi(\cdot)$によって, 1episode内でどのような制御が行われるかを見てみる. 
+また, 3000000ステップの学習によって得られた$\pi(\cdot)$によって, 1episode内でどのような制御が行われるかを見てみる. 
 \begin{figure}[h]
 	\centering
  	\includegraphics[width=10cm]{pure_control_log.png}
  	\caption{制御内容} \label{pure_control_log}
 \end{figure}\\
-図\ref{pure_control_log}は上段から$\theta, \dot{\theta}$, a(入力), 通信の有無, CBFによる入力射影の有無, 各時刻の$h(s)$が, 時間ステップ毎にどう変化するかを表したグラフである. 図から離散化の影響によって250ステップあたりから状態制約を満たさなくなってしまっている. \par
+図\ref{pure_control_log}は上段からそれぞれ$\theta, \dot{\theta}$, a(入力), 通信の有無, CBFによる入力射影の有無, 各時刻の$h(s)$が, 時間ステップ毎にどう変化するかを表したグラフである. 図から離散化の影響によって200ステップあたりから状態制約を満たさなくなってしまい, $\dot{\theta}$を0にすることによってrewardを大きくするという局所最適方策に陥っているように見える. \par
 
-これを受けて, CBFによる入力射影ルールを少し改変した. これは$h(s)<0.1$となった時のみ, $U(s)$の元のうち最も$\pi(s)$近いものではなく, 最も効率の良い入力(例えば, $\theta<0$であれば$a=10$)を選ぶようにするというものである. 
-
-
+これを受けて, CBFによる入力射影ルールを少し改変した. これは$h(s)<0.1$となった時のみ, $U(s)$の元のうち最も$\pi(s)$近いものではなく, 最も効率の良い入力(例えば, $\theta<0$であれば$a=10$)を選ぶようにするというものである. 次節からはこの入力ルールによる学習の内容を示す.
 
 
 \subsection{状態制約とCBF}
-図\ref{init}にランダムに入力を返すような初期方策$\pi_0(\cdot)$によるepisodeの実績を示す. 両図ともに横軸はステップを示す. 上図はステップ毎に$h(x)$をプロットした図(参考に$y$座標が0となるラインをオレンジで引いている)である.下図はCBFによって$\pi_0(x_t)$が変更された場合に1, それ以外で0となるようにプロットした図である.
+図\ref{init}にランダムに入力を返すような初期方策$\pi_0(\cdot)$によるepisodeの実績を示す. 両図ともに横軸はステップを示す. 上図はステップ毎に$h(s)$をプロットした図(参考に$y$座標が0となるラインをオレンジで引いている)である.下図はCBFによって$\pi_0(s_t)$が変更された場合に1, それ以外で0となるようにプロットした図である.
 \begin{figure}[h]
 	\centering
  	\includegraphics[width=10cm]{initial_policy.png}
  	\caption{学習初期の$\pi(\cdot)$の実績} \label{init}
 \end{figure}\\
 
-この図を見ると250ステップ目までは状態制約$h(x)\geq 0$を保てているが, それ以降では制約を満たせていない($h(x)<0$). 前節で述べたとおり, CBFは連続時間システムに対して成り立つ論理なので, 離散化したシミュレーションではその論理が破綻することがある.これはその影響である. \par
+この図を見ると200ステップ目までは状態制約$h(s)\geq 0$を保てているが, それ以降では制約を満たせていない($h(s)<0$). 前節で述べたとおり, CBFは連続時間システムに対して成り立つ論理なので, 離散化したシミュレーションではその論理が破綻することがある.これはその影響である. \par
 
 次に学習後期の方策方策$\pi_{t_{late}}(\cdot)$の実績を見てみる. 
 \begin{figure}[h]
@@ -178,25 +176,38 @@ Open-AI Gym Pendulum-v0とKeras-RLを用いてシミュレーションを行っ�
  	\includegraphics[width=10cm]{good_policy.png}
  	\caption{学習後期の$\pi(\cdot)$の実績}
 \end{figure}\par
-こちらではepisodeを通して状態制約$h(x)\geq 0$を保てている. 初期方策との違いは, ランダムな制御則ではなく, rewardを大きくしようとする制御則になっていることである. 状態制約が保たれる理由は, これにより制約集合内に留まろうとする回数が多くなり, 離散化によるCBFの破綻が起こる回数が少なくなっているためと考えられる.\par
+こちらではepisodeを通して状態制約$h(s)\geq 0$を保てている. 初期方策との違いは, ランダムな制御則ではなく, rewardを大きくしようとする制御則になっていることである. 状態制約が保たれる理由は, これにより制約集合内に留まろうとする回数が多くなり, 離散化によるCBFの破綻が起こる回数が少なくなっているためと考えられる.\par
 
-最後に, $\frac{600000}{2000} = 300$~episodeを通して同じグラフを描いた結果を示す. \par
+最後に,全episodeを通して同じグラフを描いた結果を示す. \par
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=10cm]{all_policies.png}
+ 	\includegraphics[width=10cm]{all_policies2.png}
  	\caption{全エピソードの実績}
 \end{figure}\par
 
-エピソードの始まりに状態が$h(x_{init})>0$となるように選んでいるため, 各エピソードの開始時に強制的に$h$のグラフが0より大きくなる. 図5を見ると, 0以上から最小値付近に遷移する回数が, 後半になるにつれて少なくなっている.これは, 状態制約を保てる回数が増えていることを示し, エージェントが状態制約集合の中にある最適状態(倒立)を留めておける方策の学習を進めることができていることの表れである. \par
+エピソードの始まりに,状態が$h(s_{init})>0$となるように選んでいるため, 各エピソードの開始時に強制的に$h$のグラフが0より大きくなる. 図5を見ると, 0以上から最小値付近に遷移する回数が, 後半になるにつれて少なくなっている.これは, 状態制約を保てる回数が増えていることを示し, エージェントが状態制約集合の中にある最適状態(倒立)を留めておける方策の学習を進めることができていることの表れだと考える. \par
 
-\subsection{イベント駆動制御になっているか}
+\subsection{最適イベント駆動制御になっているか}
 次に学習した方策はイベント駆動制御になっているのかを見てみる. \par
-この図の3段目を見ると通信を行っている回数が少なくなっており, イベント駆動制御になっていると言える. 比較対象として以下に初期方策の結果を示す. 
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=10cm]{control_log.png}
+ 	\caption{制御内容} \label{control_log}
+\end{figure}
+図\ref{control_log}は図\ref{pure_control_log}と同じクラスのグラフである. 図\ref{control_log}の4段目を見ると通信を行っている回数が$10\%$ほどに抑えられており, イベント駆動制御になっていると言える. また, 1,2段目を見ると$\theta, \dot{\theta}$は0付近にとどまっており, 振り子が倒立していることを示している.\par
 
+\newpage
 \subsection{episode rewardは増えているのか}
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=12cm]{reward.png}
+ 	\caption{episode毎の蓄積reward} \label{reward}
+\end{figure}
+図\ref{reward}でも図\ref{pure_reward}と同じように全episodeを通してのrewardの変化をグラフにした. 30episode移動平均を見ても上昇していることは確認できないが, 図\ref{pure_reward}とは異なり, 0に近い値をとっている. これは振子を倒立させることに成功しているepisodeで確認されるrewardである. 図\ref{reward}と図\ref{pure_reward}のちがいは$U(s)$を如何に用いるかの違いなので, CBFによる強化学習は, 離散化による影響をどれだけ抑えられるのかに焦点を当てるべきかもしれない.
 
-\subsection{総括してみて}
-対象となるシステムの状態方程式を用いているので当然であるが
+\subsection{課題}
+離散化によって状態制約を満たさなくなってしまうトリガーがなにかわかっていないので, それについては今後の課題である.($\theta$ではなく$\dot{\theta}$による影響が強いのではないかと予想しています.)
+
 
 
 \begin{thebibliography}{10}

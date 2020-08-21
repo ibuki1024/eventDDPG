@@ -19,6 +19,22 @@ def u_cbf(x, u_candidate, ratio):
             out = rmax
     return np.array([out])
 
+def u_cbf_pure(x, u_candidate, ratio):
+    ran = _u_of_x(x, ratio)
+    rmin, rmax = ran[0], ran[1]
+    out = u_candidate
+    if False:
+        if x[0] < 0:
+            out = rmax
+        else:
+            out = rmin
+    else:
+        if u_candidate < rmin:
+            out = rmin
+        elif u_candidate > rmax:
+            out = rmax
+    return np.array([out])
+
 
 def h(x, alpha=set_alpha()):
         return 1 - x[0]**2 - alpha*x[1]**2

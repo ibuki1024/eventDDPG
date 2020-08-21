@@ -1,4 +1,4 @@
-This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  20 AUG 2020 17:14
+This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  20 AUG 2020 20:09
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -393,35 +393,40 @@ LaTeX Warning: `h' float specifier changed to `ht'.
 
 File: pure_control_log.png Graphic file (type bmp)
 <pure_control_log.png>
-[3]
+[3] [4]
 File: initial_policy.png Graphic file (type bmp)
 <initial_policy.png>
- [4]
 File: good_policy.png Graphic file (type bmp)
 <good_policy.png>
-File: all_policies.png Graphic file (type bmp)
-<all_policies.png>
+ [5]
+File: all_policies2.png Graphic file (type bmp)
+<all_policies2.png>
+File: control_log.png Graphic file (type bmp)
+<control_log.png>
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[5]
+[6]
+File: reward.png Graphic file (type bmp)
+<reward.png>
+ [7]
 LaTeX Font Info:    Font shape `JT1/mc/m/it' in size <10> not available
-(Font)              Font shape `JT1/mc/m/n' tried instead on input line 202.
+(Font)              Font shape `JT1/mc/m/n' tried instead on input line 215.
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 202.
+(Font)              scaled to size 9.60999pt on input line 215.
 LaTeX Font Info:    Font shape `JY1/mc/m/it' in size <10> not available
-(Font)              Font shape `JY1/mc/m/n' tried instead on input line 202.
+(Font)              Font shape `JY1/mc/m/n' tried instead on input line 215.
 LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 202.
- [6] (./draft.aux) ) 
+(Font)              scaled to size 9.60999pt on input line 215.
+ [8] (./draft.aux) ) 
 Here is how much of TeX's memory you used:
- 2781 strings out of 493281
- 35668 string characters out of 6145042
- 120462 words of memory out of 5000000
- 6631 multiletter control sequences out of 15000+600000
+ 2791 strings out of 493281
+ 35865 string characters out of 6145042
+ 120478 words of memory out of 5000000
+ 6637 multiletter control sequences out of 15000+600000
  23023 words of font info for 102 fonts, out of 8000000 for 9000
  934 hyphenation exceptions out of 8191
- 27i,9n,25p,482b,391s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 27i,9n,25p,547b,391s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on draft.dvi (6 pages, 21560 bytes).
+Output written on draft.dvi (8 pages, 24936 bytes).
