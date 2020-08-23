@@ -152,6 +152,36 @@ def single_lin_relu(tensor):
     return out
 
 
+def single_lin_relu_sig(tensor):
+    """ReLU with first element and sigmoid with second element and other is linear.
+    """
+    dtype = tensor.dtype
+    shape = (tensor.shape[1],)
+    first_array = np.zeros(shape) # for linear
+    first_array[0] = 1 # [1,0,0,....]
+
+    second_array = np.ones(shape) # for relu
+    second_array[0] = 0 # [0,1,1,...]
+
+    third_array = np.zeros(shape) # for sigmoid
+    third_array[1] = 1 # [0,1,0,...] 
+
+    first_tensor = K.constant(first_array)
+    first_tensor = K.cast(first_tensor, dtype)
+    second_tensor = K.constant(second_array)
+    second_tensor = K.cast(second_tensor, dtype)
+    third_tensor = K.constant(third_array)
+    third_tensor = K.cast(third_tensor, dtype)
+
+    relu = K.relu(tensor)
+    sigmoid = K.sigmoid(tensor)
+    out = K.add(K.multiply(tensor, first_tensor), K.multiply(relu, second_tensor))
+    out = K.add(out, K.multiply(sigmoid, third_tensor))
+
+    return out
+
+
+
 def single_lin_tanh(tensor):
     """ReLU with first element is linear.
     """

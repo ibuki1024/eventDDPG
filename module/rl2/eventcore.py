@@ -186,8 +186,7 @@ class Agent(object):
                 assert observation is not None
 
                 # store whether current state is danger. 1 for danger, 0 for safe.
-                theta = _obs_to_rad(observation)
-                cbf_log[self.step][0] = bc.h(np.array([theta, observation[2]]))
+                cbf_log[self.step][0] = bc.h(observation)
 
                 # Run a single step.
                 callbacks.on_step_begin(episode_step)
@@ -199,7 +198,7 @@ class Agent(object):
                     gama = 1
                     action = np.array([self.forward(observation)[0]])
                     clip = np.clip(action, -ratio, ratio)
-                    x = np.array([_obs_to_rad(observation), observation[2]])
+                    x = observation
                     if pure:
                         action = bc.u_cbf_pure(x, action[0], ratio)
                     else:
@@ -220,7 +219,7 @@ class Agent(object):
                         gama = 1
                         action_with_decision = action_candidate
                         action = np.array([action_candidate[0]])
-                    x = np.array([_obs_to_rad(observation), observation[2]])
+                    x = observation
                     # barrier certification
                     clip = np.clip(action, -ratio, ratio)
                     if pure:
@@ -436,7 +435,7 @@ class Agent(object):
                     action = np.array([self.forward(observation)[0]])
                     action_wo_cbf = action
                     first_step = False
-                    x = np.array([_obs_to_rad(observation), observation[2]])
+                    x = observation
                     if pure:
                         action = bc.u_cbf_pure(x, action[0], ratio)
                     else:
@@ -453,13 +452,13 @@ class Agent(object):
                     action = np.array([action_with_decision[0]])
                     action_candidate = self.forward(observation)
                     if action_view == True:
-                        print("step = ", self.step, ", output of actor network = ", action_candidate[0])
+                        print("step = ", self.step, ", output of actor network = ", action_candidate)
                     dif = np.abs(action_candidate[0] - action)
                     if action_candidate[1] > action_candidate[2] or explore or time_mode:
                         gama = 1
                         action_with_decision = action_candidate
                         action = np.array([action_candidate[0]])
-                    x = np.array([_obs_to_rad(observation), observation[2]])
+                    x = observation
                     clip = np.clip(action, -ratio, ratio)
                     if pure:
                         action = bc.u_cbf_pure(x, action[0], ratio)
@@ -496,7 +495,7 @@ class Agent(object):
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     done = True
                 hx = bc.h(x)
-                his.append([_obs_to_rad(observation), observation[2], \
+                his.append([observation[0], observation[1], \
                                     np.clip(action, -ratio, ratio), gama, cbf_action, hx])
                 self.backward(reward, terminal=done)
                 episode_reward += reward

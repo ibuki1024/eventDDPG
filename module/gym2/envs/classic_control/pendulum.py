@@ -66,7 +66,7 @@ class PendulumEnv(gym2.Env):
         high = np.array([0, 1]) # start with inverted point
         while 1:
             self.state = self.np_random.uniform(low=-high, high=high)
-            self.state[0] += np.random.randn() / 5. # add noise to explore around top
+            self.state[0] += np.random.randn() / 50. # add noise to explore around top
             if h(self.state, set_alpha()) > 0:
                 break
         self.last_u = None
@@ -74,7 +74,8 @@ class PendulumEnv(gym2.Env):
 
     def _get_obs(self):
         theta, thetadot = self.state
-        return np.array([np.cos(theta), np.sin(theta), thetadot])
+        # return np.array([np.cos(theta), np.sin(theta), thetadot])
+        return np.array([theta, thetadot])
 
     def render(self, mode='human'):
         if self.viewer is None:

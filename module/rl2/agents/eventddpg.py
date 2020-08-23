@@ -15,10 +15,6 @@ from rl2.util import *
 def mean_q(y_true, y_pred):
     return K.mean(K.max(y_pred, axis=-1))
 
-def _inv_tanh(x):
-    return 1/2 * np.log((1+x)/(1-x))
-
-
 # Deep DPG as described by Lillicrap et al. (2015)
 # http://arxiv.org/pdf/1509.02971v2.pdf
 # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.646.4324&rep=rep1&type=pdf
@@ -221,7 +217,6 @@ class eventDDPGAgent(Agent):
         state = self.memory.get_recent_state(observation)
         #TODO: change the law of selecting action
         action = self.select_action(state)
-        action[0] = _inv_tanh(action[0])
 
         # Book-keeping.
         self.recent_observation = observation
