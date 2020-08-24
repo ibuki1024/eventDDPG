@@ -87,7 +87,7 @@ register(
 register(
     id='Pendulum-v1',
     entry_point='gym2.envs.classic_control:PendulumEnv',
-    max_episode_steps=2000,
+    max_episode_steps=20000,
 )
 
 register(

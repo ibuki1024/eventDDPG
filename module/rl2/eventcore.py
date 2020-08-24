@@ -360,7 +360,7 @@ class Agent(object):
 
         self.training = False
         self.step = 0
-        ratio = env.max_torque
+        ratio = env.action_space.high
 
         his = []
 

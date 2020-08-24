@@ -5,8 +5,6 @@ from copy import deepcopy
 import numpy as np
 from keras2.callbacks import History
 
-import rl2.barrier_certificate as bc
-
 from rl2.callbacks import (
     CallbackList,
     TestLogger,
@@ -15,15 +13,6 @@ from rl2.callbacks import (
     Visualizer
 )
 
-def _obs_to_rad(observation):
-        assert observation.shape[0] == 3, 'shape error'
-        cos, sin = observation[:2]
-        sc, ss = np.sign(cos), np.sign(sin)
-        if sc * ss == 1:
-            theta = np.arccos(cos) if sc == 1 else -np.arccos(cos)
-        else:
-            theta = np.arccos(cos) if sc == -1 else -np.arccos(cos)
-        return theta
 
 class Agent(object):
     """Abstract base class for all implemented agents.
@@ -52,7 +41,6 @@ class Agent(object):
         self.processor = processor
         self.training = False
         self.step = 0
-        self.epsilon = 0.02
 
     def get_config(self):
         """Configuration of the agent for serialization.
@@ -62,9 +50,9 @@ class Agent(object):
         """
         return {}
 
-    def fit(self, env, nb_steps, lam=1, action_repetition=1, callbacks=None, verbose=1,
+    def fit(self, env, nb_steps, action_repetition=1, callbacks=None, verbose=1,
             visualize=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
-            nb_max_episode_steps=None, loss_graph=False, time_mode=False, pure=False):
+            nb_max_episode_steps=None, l=1):
         """Trains the agent on the given environment.
 
         # Arguments
@@ -101,12 +89,6 @@ class Agent(object):
         self.training = True
         ratio = env.action_space.high
 
-        lo = []
-        loss_ave = 0
-        epi = 0
-        cbf_log = np.zeros((nb_steps, 2))
-        episode_rewards = []
-
         callbacks = [] if not callbacks else callbacks[:]
 
         if verbose == 1:
@@ -139,9 +121,6 @@ class Agent(object):
         episode_reward = None
         episode_step = None
         did_abort = False
-        #In the firststep of each episode, we must communicate.
-        episode_start_step = 0
-        csv_content = []
         try:
             while self.step < nb_steps:
                 if observation is None:  # start of a new episode
@@ -184,56 +163,22 @@ class Agent(object):
                 assert episode_step is not None
                 assert observation is not None
 
-                # store whether current state is danger. 1 for danger, 0 for safe.
-                cbf_log[self.step][0] = bc.h(observation)
-
                 # Run a single step.
                 callbacks.on_step_begin(episode_step)
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
+                action_tau = self.forward(observation)
+                action = np.array([action_tau[0]])
+                action = np.clip(action, -ratio, ratio)
 
-                #action caluculate area
-                if self.step == episode_start_step:
-                    gama = 1
-                    action = np.array([self.forward(observation)[0]])
-                    clip = np.clip(action, -ratio, ratio)
-                    x = observation
-                    if pure:
-                        action = bc.u_cbf_pure(x, action[0], ratio)
-                    else:
-                        action = bc.u_cbf(x, action[0], ratio)
-                    cbf_action = 1 if clip != action else 0
-                else:
-                    epsi = np.random.rand()
-                    explore = False
-                    if epsi < self.epsilon:
-                        if np.random.binomial(2,0.5,1)[0] == 1:
-                            explore = True
-                    gama = 0
-                    action_with_decision = self.recent_action
-                    action = np.array([action_with_decision[0]])
-                    action_candidate = self.forward(observation)
-                    dif = np.abs(action_candidate[0] - action)
-                    if action_candidate[1] > action_candidate[2] or explore or time_mode:
-                        gama = 1
-                        action_with_decision = action_candidate
-                        action = np.array([action_candidate[0]])
-                    x = observation
-                    # barrier certification
-                    clip = np.clip(action, -ratio, ratio)
-                    if pure:
-                        action = bc.u_cbf_pure(x, action[0], ratio)
-                    else:
-                        action = bc.u_cbf(x, action[0], ratio)
-                    cbf_action = 1 if clip != action else 0
-                    if cbf_action == 1:
-                        gama = 1
-                    cbf_log[self.step][1] = cbf_action
-                    action_with_decision[0] = action
-                    self.recent_action = action_with_decision
+                # in future, this module must work as self_triggered control
+                # so following sentence should be active 
+                '''
+                action_repetition = action_tau[1]
+                '''
+
                 if self.processor is not None:
                     action = self.processor.process_action(action)
-
                 reward = np.float32(0)
                 accumulated_info = {}
                 done = False
@@ -250,7 +195,7 @@ class Agent(object):
                             accumulated_info[key] = np.zeros_like(value)
                         accumulated_info[key] += value
                     callbacks.on_action_end(action)
-                    r -= lam * gama
+                    r = r / action_repetition + l * action_repetition
                     reward += r
                     if done:
                         break
@@ -268,8 +213,6 @@ class Agent(object):
                     'episode': episode,
                     'info': accumulated_info,
                 }
-                if self.step > 1000 and loss_graph:
-                    loss_ave += metrics[0]
                 callbacks.on_step_end(episode_step, step_logs)
                 episode_step += 1
                 self.step += 1
@@ -282,11 +225,6 @@ class Agent(object):
                     # always non-terminal by convention.
                     self.forward(observation)
                     self.backward(0., terminal=False)
-                    episode_start_step = self.step
-                    epi += 1
-                    if self.step > 1000 and loss_graph:
-                        lo.append(loss_ave/episode_step)
-                    loss_ave = 0
 
                     # This episode is finished, report and reset.
                     episode_logs = {
@@ -295,7 +233,6 @@ class Agent(object):
                         'nb_steps': self.step,
                     }
                     callbacks.on_episode_end(episode, episode_logs)
-                    episode_rewards.append(episode_reward)
 
                     episode += 1
                     observation = None
@@ -308,22 +245,11 @@ class Agent(object):
             did_abort = True
         callbacks.on_train_end(logs={'did_abort': did_abort})
         self._on_train_end()
-        self.cbf_log = np.array(cbf_log)
-        self.episode_rewards = episode_rewards
-        print(callbacks.callbacks[0])
-
-        if loss_graph:
-            #the number of episode - first warming up 5 episodes
-            plt.plot(range(epi-int(1000/nb_max_episode_steps)), lo)
-            plt.xlabel('episodes')
-            plt.ylabel('loss')
-            plt.show()
 
         return history
 
-    def test(self, env, nb_episodes=1, lam=1, action_repetition=1, callbacks=None, visualize=False,
-             nb_max_episode_steps=None, nb_max_start_steps=0, start_step_policy=None, verbose=1, graph=False,
-             action_view=False, time_mode=False, pure=False):
+    def test(self, env, nb_episodes=1, action_repetition=1, callbacks=None, visualize=True,
+             nb_max_episode_steps=None, nb_max_start_steps=0, start_step_policy=None, verbose=1, l=1):
         """Callback that is called before training begins.
 
         # Arguments
@@ -359,8 +285,8 @@ class Agent(object):
 
         self.training = False
         self.step = 0
-        ratio = env.max_torque
-
+        ratio = env.action_space.high
+        self.data_log = np.zeros((nb_episodes, action_repetition * nb_max_episode_steps, 4))
         his = []
 
         callbacks = [] if not callbacks else callbacks[:]
@@ -387,8 +313,6 @@ class Agent(object):
 
         self._on_test_begin()
         callbacks.on_train_begin()
-
-        self.data_log = np.zeros((nb_episodes, nb_max_episode_steps, 6))
         for episode in range(nb_episodes):
             callbacks.on_episode_begin(episode)
             episode_reward = 0.
@@ -426,76 +350,47 @@ class Agent(object):
 
             # Run the episode until we're done.
             done = False
-            first_step = True
             while not done:
                 callbacks.on_step_begin(episode_step)
-                if first_step:
-                    gama = 1
-                    action = np.array([self.forward(observation)[0]])
-                    action_wo_cbf = action
-                    first_step = False
-                    x = observation
-                    if pure:
-                        action = bc.u_cbf_pure(x, action[0], ratio)
-                    else:
-                        action = bc.u_cbf(x, action[0], ratio)
-                    cbf_action = 1 if action_wo_cbf != action else 0
-                else:
-                    epsi = np.random.rand()
-                    explore = False
-                    if epsi < self.epsilon:
-                        if np.random.binomial(2,0.5,1)[0] == 1:
-                            explore = True
-                    gama = 0
-                    action_with_decision = self.recent_action
-                    action = np.array([action_with_decision[0]])
-                    action_candidate = self.forward(observation)
-                    if action_view == True:
-                        print("step = ", self.step, ", output of actor network = ", action_candidate)
-                    dif = np.abs(action_candidate[0] - action)
-                    if action_candidate[1] > action_candidate[2] or explore or time_mode:
-                        gama = 1
-                        action_with_decision = action_candidate
-                        action = np.array([action_candidate[0]])
-                    x = observation
-                    clip = np.clip(action, -ratio, ratio)
-                    if pure:
-                        action = bc.u_cbf_pure(x, action[0], ratio)
-                    else:
-                        action = bc.u_cbf(x, action[0], ratio)
-                    cbf_action = 1 if clip != action else 0
-                    if cbf_action == 1:
-                        gama = 1
-                    action_with_decision[0] = action
-                    self.recent_action = action_with_decision
+
+                action_tau = self.forward(observation)
+                action = np.array([action_tau[0]])
+                action = np.clip(action, -ratio, ratio)
+
+                # in future, this module must work as self_triggered control
+                # so following sentence should be active 
+                '''
+                action_repetition = action_tau[1]
+                '''
 
                 if self.processor is not None:
                     action = self.processor.process_action(action)
                 reward = 0.
                 accumulated_info = {}
                 for _ in range(action_repetition):
+                    com = 0
                     callbacks.on_action_begin(action)
                     observation, r, d, info = env.step(action)
                     observation = deepcopy(observation)
                     if self.processor is not None:
                         observation, r, d, info = self.processor.process_step(observation, r, d, info)
                     callbacks.on_action_end(action)
-                    r -= lam * gama
-                    reward += r
+                    r = r / action_repetition + l * action_repetition
+                    reward = r
                     for key, value in info.items():
                         if not np.isreal(value):
                             continue
                         if key not in accumulated_info:
                             accumulated_info[key] = np.zeros_like(value)
                         accumulated_info[key] += value
+                    if _ == action_repetition-1:
+                        com = 1
+                    his.append([observation[0], observation[1], action, com])
                     if d:
                         done = True
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     done = True
-                hx = bc.h(x)
-                his.append([observation[0], observation[1], \
-                                    np.clip(action, -ratio, ratio), gama, cbf_action, hx])
                 self.backward(reward, terminal=done)
                 episode_reward += reward
 
@@ -527,14 +422,10 @@ class Agent(object):
 
             his = np.array(his)
             if his.shape != self.data_log[0].shape:
-                his = np.vstack((his, np.zeros((nb_max_episode_steps - his.shape[0], 6))))
+                his = np.vstack((his, np.zeros((action_repetition * nb_max_episode_steps - his.shape[0], 4))))
             self.data_log[episode] = his
-            col = ['red','blue','magenta']
-            ylabel = [ 'θ (rad)', 'u (Nm)', 'γ']
-            his = []
         callbacks.on_train_end()
         self._on_test_end()
-
 
         return history
 
