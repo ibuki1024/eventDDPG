@@ -203,6 +203,10 @@ def single_lin_tanh(tensor):
     return out
 
 
+def multiple_tanh(x, ratio=10.):
+    return ratio * K.tanh(x)
+
+
 def tanh(x):
     """Hyperbolic tangent activation function.
     """

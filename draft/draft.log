@@ -1,4 +1,4 @@
-This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  20 AUG 2020 20:09
+This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  26 AUG 2020 11:05
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -359,74 +359,33 @@ LaTeX Font Info:    Font shape `JT1/gt/m/n' will be
 (Font)              scaled to size 13.83836pt on input line 42.
 LaTeX Font Info:    Font shape `JY1/gt/m/n' will be
 (Font)              scaled to size 13.83836pt on input line 42.
-File: event.png Graphic file (type bmp)
-<event.png>
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 8.64899pt on input line 52.
+(Font)              scaled to size 6.72699pt on input line 52.
+LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
+(Font)              scaled to size 4.805pt on input line 52.
+LaTeX Font Info:    Font shape `JT1/mc/m/it' in size <10> not available
+(Font)              Font shape `JT1/mc/m/n' tried instead on input line 73.
+LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
+(Font)              scaled to size 9.60999pt on input line 73.
+LaTeX Font Info:    Font shape `JY1/mc/m/it' in size <10> not available
+(Font)              Font shape `JY1/mc/m/n' tried instead on input line 73.
 LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 8.64899pt on input line 52.
-LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 6.72699pt on input line 69.
-LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 4.805pt on input line 69.
+(Font)              scaled to size 9.60999pt on input line 73.
  [1
 
-]
-File: region.png Graphic file (type bmp)
-<region.png>
-LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 5.76599pt on input line 110.
-LaTeX Font Info:    Font shape `JY1/gt/m/n' will be
-(Font)              scaled to size 8.64899pt on input line 110.
-LaTeX Font Info:    Font shape `JY1/gt/m/n' will be
-(Font)              scaled to size 5.76599pt on input line 110.
+] [2]
+(./draft.aux)
 
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[2]
-File: pure_reward.png Graphic file (type bmp)
-<pure_reward.png>
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-File: pure_control_log.png Graphic file (type bmp)
-<pure_control_log.png>
-[3] [4]
-File: initial_policy.png Graphic file (type bmp)
-<initial_policy.png>
-File: good_policy.png Graphic file (type bmp)
-<good_policy.png>
- [5]
-File: all_policies2.png Graphic file (type bmp)
-<all_policies2.png>
-File: control_log.png Graphic file (type bmp)
-<control_log.png>
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[6]
-File: reward.png Graphic file (type bmp)
-<reward.png>
- [7]
-LaTeX Font Info:    Font shape `JT1/mc/m/it' in size <10> not available
-(Font)              Font shape `JT1/mc/m/n' tried instead on input line 215.
-LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 215.
-LaTeX Font Info:    Font shape `JY1/mc/m/it' in size <10> not available
-(Font)              Font shape `JY1/mc/m/n' tried instead on input line 215.
-LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 215.
- [8] (./draft.aux) ) 
+ ) 
 Here is how much of TeX's memory you used:
- 2791 strings out of 493281
- 35865 string characters out of 6145042
- 120478 words of memory out of 5000000
- 6637 multiletter control sequences out of 15000+600000
- 23023 words of font info for 102 fonts, out of 8000000 for 9000
+ 2715 strings out of 493281
+ 34622 string characters out of 6145042
+ 117478 words of memory out of 5000000
+ 6594 multiletter control sequences out of 15000+600000
+ 17211 words of font info for 78 fonts, out of 8000000 for 9000
  934 hyphenation exceptions out of 8191
- 27i,9n,25p,547b,391s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 27i,9n,25p,322b,268s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on draft.dvi (8 pages, 24936 bytes).
+Output written on draft.dvi (2 pages, 5952 bytes).

@@ -256,11 +256,11 @@ class selfDDPGAgent(Agent):
             assert len(experiences) == self.batch_size
 
             # Start by extracting the necessary parameters (we use a vectorized implementation).
-            state0_batch = []
-            reward_batch = []
-            action_batch = []
+            state0_batch = [] # current_state
+            reward_batch = [] # current_reward
+            action_batch = [] # current_action
             terminal1_batch = []
-            state1_batch = []
+            state1_batch = [] # next_state
             for e in experiences:
                 state0_batch.append(e.state0)
                 state1_batch.append(e.state1)
@@ -304,6 +304,7 @@ class selfDDPGAgent(Agent):
                 else:
                     state0_batch_with_action = [state0_batch]
                 state0_batch_with_action.insert(self.critic_action_input_idx, action_batch)
+                # state0_batch_with_action is teacher, targets is prediction
                 metrics = self.critic.train_on_batch(state0_batch_with_action, targets)
                 if self.processor is not None:
                     metrics += self.processor.metrics
@@ -317,7 +318,7 @@ class selfDDPGAgent(Agent):
                     inputs = [state0_batch]
                 if self.uses_learning_phase:
                     inputs += [self.training]
-                action_values = self.actor_train_fn(inputs)[0]
+                action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
                 assert action_values.shape == (self.batch_size, self.nb_actions)
 
         if self.target_model_update >= 1 and self.step % self.target_model_update == 0:

@@ -355,7 +355,7 @@ class Agent(object):
 
                 action_tau = self.forward(observation)
                 action = np.array([action_tau[0]])
-                action = np.clip(action, -ratio, ratio)
+                # 
 
                 # in future, this module must work as self_triggered control
                 # so following sentence should be active 
