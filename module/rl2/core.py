@@ -3,9 +3,9 @@ import warnings
 from copy import deepcopy
 
 import numpy as np
-from keras.callbacks import History
+from keras2.callbacks import History
 
-from rl.callbacks import (
+from rl2.callbacks import (
     CallbackList,
     TestLogger,
     TrainEpisodeLogger,

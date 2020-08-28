@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 8.20}}}
+\title{\large{\bf{進捗報告 8.28}}}
 \author{M2 竹内 維吹}
 %\date{Jul. 7, 2020}
 \date{\today}
@@ -42,7 +42,7 @@
 \section{サンプル値系システムの強化学習}
 対象のシステムが
 \begin{equation}
-	x_{t+1} = f(x_t) + g(x_t)u_t
+	s_{t+1} = f(s_t) + g(s_t)a_t
 \end{equation}
 と書かれていて,  $\tau$ステップ毎に状態を観測し, 状態フィードバック制御則を変えて次の観測までは同じ入力を加え続ける, サンプル値系における最適制御問題の強化学習を考える. この動機は$\tau$ステップ毎に観測・制御則更新を行うのと, それを毎ステップ行うのとで学習に必要なステップ数が変わるのかを検証するためである.\par
 結論から記すと, おそらくはサンプル値系にしたからといって学習時間に大きな変化はないと考える. 
@@ -55,7 +55,7 @@
 	\dot{\theta}_{t+1} &=  \dot{\theta}_t+\frac{3g}{2l}\sin{\theta_t}\delta_t+\frac{3}{ml^2}a\delta_t
 \end{align}
 これは式(\ref{true_dynamics})に対応する. 本実験ではこのダイナミクスが既知であるとして$U(s)$を構築し, 状態制約(\ref{constraint})を満たしながら$\pi^{*}$を求めることができるのかを検証する. ただし, $\delta_t$は離散化定数であり$\delta_t=0.005$とする.\par
-ただし, これは離散化された状態方程式であるため, CBFによる状態制約の前進不変性をより厳密に議論するために対応する連続時間システムを書き下すと
+これに対応する連続時間システムを書き下すと
 \begin{equation}
 	\odif{}{t}\begin{pmatrix}\theta \\ \dot{\theta}\end{pmatrix} = 
 		\begin{pmatrix}\dot{\theta} \\ \frac{3g}{2l}\sin{\theta} + \frac{3}{ml^2}a \end{pmatrix} \label{continuous}
