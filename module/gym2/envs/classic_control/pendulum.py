@@ -52,7 +52,7 @@ class PendulumEnv(gym2.Env):
         #u = np.clip(u, -self.max_torque, self.max_torque)[0]
         u = u[0]
         self.last_u = u  # for rendering
-        costs = angle_normalize(th) ** 2 + .01 * thdot ** 2 + .001 * (u ** 2)
+        costs = angle_normalize(th) ** 2 + .1 * thdot ** 2 + .001 * (u ** 2)
 
         newthdot = thdot + (- 3 * g / (2 * l) * np.sin(th + np.pi) + 3. / (m * l ** 2) * u) * dt
         newth = th + newthdot * dt
@@ -66,7 +66,7 @@ class PendulumEnv(gym2.Env):
         high = np.array([0, 1]) # start with inverted point
         while 1:
             self.state = self.np_random.uniform(low=-high, high=high)
-            self.state[0] += np.random.randn() / 50. # add noise to explore around top
+            self.state[0] += np.random.randn() / 10. # add noise to explore around top
             if h(self.state, set_alpha()) > 0:
                 break
         self.last_u = None

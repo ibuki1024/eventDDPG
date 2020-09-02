@@ -21,7 +21,7 @@ def mean_q(y_true, y_pred):
 class selfDDPGAgent(Agent):
     """Write me
     """
-    def __init__(self, nb_actions, actor, critic, critic_action_input, memory,
+    def __init__(self, nb_actions, actor, critic, critic_action_input, memory, input_clipper=10.,
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
                  random_process=None, custom_model_objects={}, target_model_update=.001,clip_com=0.1, **kwargs):
@@ -58,6 +58,8 @@ class selfDDPGAgent(Agent):
             assert False, 'Unknown Random Process'
 
         # Parameters.
+        self.input_clipper = input_clipper
+        self.outputlayer_param_mean = []
         self.nb_actions = nb_actions
         self.nb_steps_warmup_actor = nb_steps_warmup_actor
         self.nb_steps_warmup_critic = nb_steps_warmup_critic
@@ -119,7 +121,7 @@ class selfDDPGAgent(Agent):
 
         # We also compile the actor. We never optimize the actor using Keras but instead compute
         # the policy gradient ourselves. However, we need the actor in feed-forward mode, hence
-        # we also compile it with any optimzer and
+        # we also compile it with any optimzer and never use it.
         self.actor.compile(optimizer='sgd', loss='mse')
 
         # Compile the critic.
@@ -217,6 +219,7 @@ class selfDDPGAgent(Agent):
         state = self.memory.get_recent_state(observation)
         #TODO: change the law of selecting action
         action = self.select_action(state)
+        action = np.clip(action, -self.input_clipper, self.input_clipper)
 
         # Book-keeping.
         self.recent_observation = observation
@@ -304,15 +307,16 @@ class selfDDPGAgent(Agent):
                 else:
                     state0_batch_with_action = [state0_batch]
                 state0_batch_with_action.insert(self.critic_action_input_idx, action_batch)
-                # state0_batch_with_action is teacher, targets is prediction
+                # state0_batch_with_action is input, targets is teacher
                 metrics = self.critic.train_on_batch(state0_batch_with_action, targets)
                 if self.processor is not None:
                     metrics += self.processor.metrics
 
+            tmp = self.actor.layers[4].get_weights()[0]
             # Update actor, if warm up is over.
             if self.step > self.nb_steps_warmup_actor:
                 # TODO: implement metrics for actor
-                if len(self.actor.inputs) >= 2:
+                if len(self.actor.inputs) >= 2: # state
                     inputs = state0_batch[:]
                 else: #now we get len = 1
                     inputs = [state0_batch]
@@ -320,6 +324,9 @@ class selfDDPGAgent(Agent):
                     inputs += [self.training]
                 action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
                 assert action_values.shape == (self.batch_size, self.nb_actions)
+            actor_outputlayer_diff = tmp - self.actor.layers[4].get_weights()[0]
+            diff_mean = np.mean(np.abs(actor_outputlayer_diff), axis=0)
+            self.outputlayer_param_mean.append(diff_mean)
 
         if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
             self.update_target_models_hard()

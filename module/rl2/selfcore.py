@@ -87,7 +87,6 @@ class Agent(object):
             raise ValueError('action_repetition must be >= 1, is {}'.format(action_repetition))
 
         self.training = True
-        ratio = env.action_space.high
 
         callbacks = [] if not callbacks else callbacks[:]
 
@@ -168,14 +167,16 @@ class Agent(object):
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
                 action_tau = self.forward(observation)
-                action = np.array([action_tau[0]])
-                action = np.clip(action, -ratio, ratio)
+                action = action_tau if action_tau.shape[0] == 1 else np.array([action_tau[0]])
 
                 # in future, this module must work as self_triggered control
                 # so following sentence should be active 
                 '''
                 action_repetition = action_tau[1]
                 '''
+
+                # in future, if we want tau=1 agent, we can make it with
+                # tau_bool = 1 if round(action_tau[1]) == 1. else 0
 
                 if self.processor is not None:
                     action = self.processor.process_action(action)
@@ -285,7 +286,6 @@ class Agent(object):
 
         self.training = False
         self.step = 0
-        ratio = env.action_space.high
         self.data_log = np.zeros((nb_episodes, action_repetition * nb_max_episode_steps, 4))
         his = []
 
@@ -354,8 +354,7 @@ class Agent(object):
                 callbacks.on_step_begin(episode_step)
 
                 action_tau = self.forward(observation)
-                action = np.array([action_tau[0]])
-                # 
+                action = action_tau if action_tau.shape[0] == 1 else np.array([action_tau[0]])
 
                 # in future, this module must work as self_triggered control
                 # so following sentence should be active 
