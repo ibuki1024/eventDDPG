@@ -5,3 +5,4 @@ from .cem import CEMAgent
 from .sarsa import SarsaAgent, SARSAAgent
 from .eventddpg import eventDDPGAgent
 from .selfddpg import selfDDPGAgent
+from .safeddpg import safeDDPGAgent

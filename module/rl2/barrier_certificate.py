@@ -3,11 +3,11 @@ import numpy as np
 def set_alpha():
     return 2.
 
-def u_cbf(x, u_candidate, ratio):
+def u_cbf(x, u_candidate, ratio=10.):
     ran = _u_of_x(x, ratio)
     rmin, rmax = ran[0], ran[1]
     out = u_candidate
-    if h(x) < 0:
+    if h(x) < 1e-1:
         if x[0] < 0:
             out = rmax
         else:
