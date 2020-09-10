@@ -91,6 +91,12 @@ register(
 )
 
 register(
+    id='Pendulum-v2',
+    entry_point='gym2.envs.classic_control:PendulumEnv2',
+    max_episode_steps=200000,
+)
+
+register(
     id='Acrobot-v1',
     entry_point='gym.envs.classic_control:AcrobotEnv',
     reward_threshold=-100.0,

@@ -1,6 +1,6 @@
 from gym import error
 from gym.wrappers.monitor import Monitor
-from gym.wrappers.time_limit import TimeLimit
+from gym2.wrappers.time_limit import TimeLimit, TimeLimit2
 from gym.wrappers.filter_observation import FilterObservation
 from gym.wrappers.atari_preprocessing import AtariPreprocessing
 from gym.wrappers.rescale_action import RescaleAction
