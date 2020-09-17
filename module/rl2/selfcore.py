@@ -5,6 +5,8 @@ from copy import deepcopy
 import numpy as np
 from keras2.callbacks import History
 
+import rl2.barrier_certificate as bc
+
 from rl2.callbacks import (
     CallbackList,
     TestLogger,
@@ -86,6 +88,9 @@ class Agent(object):
             raise ValueError('action_repetition must be >= 1, is {}'.format(action_repetition))
 
         self.training = True
+        
+        # original parameters
+        accumulated_time = 0
 
         callbacks = [] if not callbacks else callbacks[:]
 
@@ -172,8 +177,23 @@ class Agent(object):
                 action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
                 dt = tau / action_repetition
 
-                # in future, if we want tau=1 agent, we can make it with
-                # tau_bool = 1 if round(action_tau[1]) == 1. else 0
+                # ecbf certification for tau
+                '''
+                if not ecbf_cond(tau, action):
+                  tau = ecbf(action)
+                if tau < dt_limit:
+                    cbf_nessessity = True
+                '''
+
+                # cbf certification for input
+                cbf_nessessity = False
+                cbf = False
+                if cbf_nessessity:
+                    x = env.state
+                    tmp = bc.u_cbf(x, action)
+                    if action != tmp:
+                        cbf = True
+                        action = tmp
 
                 if self.processor is not None:
                     action = self.processor.process_action(action)
@@ -197,9 +217,9 @@ class Agent(object):
                     if done:
                         break
                 reward *= dt  # make sum to integral
-                reward += l * tau  # add tau reward
-                print(f'{self.step}:  tau = {tau}, dt = {dt}, action_repetition = {action_repetition}, reward = {reward}')
-                if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
+                reward += tau * 0.01 * action[0]**2 + l * tau  # add tau reward
+                accumulated_time += tau
+                if accumulated_time > 10.:
                     # Force a terminal state.
                     done = True
                 metrics = self.backward(reward, terminal=done)
@@ -228,6 +248,7 @@ class Agent(object):
 
                     # This episode is finished, report and reset.
                     episode_logs = {
+                        'episode_average_tau': accumulated_time/episode_step,
                         'episode_reward': episode_reward,
                         'nb_episode_steps': episode_step,
                         'nb_steps': self.step,
@@ -238,6 +259,7 @@ class Agent(object):
                     observation = None
                     episode_step = None
                     episode_reward = None
+                    accumulated_time = 0
         except KeyboardInterrupt:
             # We catch keyboard interrupts here so that training can be be safely aborted.
             # This is so common that we've built this right into this function, which ensures that
@@ -285,7 +307,7 @@ class Agent(object):
 
         self.training = False
         self.step = 0
-        self.data_log = np.zeros((nb_episodes, action_repetition * nb_max_episode_steps, 4))
+        self.data_log = np.zeros((nb_episodes, nb_max_episode_steps, 5))
         his = []
 
         callbacks = [] if not callbacks else callbacks[:]
@@ -356,8 +378,27 @@ class Agent(object):
                 action = action_tau if action_tau.shape[0] == 1 else np.array([action_tau[0]])
 
                 tau = action_tau[1]
-                action_repetition = int(np.floor(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
+                action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
                 dt = tau / action_repetition
+
+                # ecbf certification for tau
+                '''
+                if not ecbf_cond(tau, action):
+                  tau = ecbf(action)
+                if tau < dt_limit:
+                    cbf_nessessity = True
+                '''
+
+                # cbf certification for input
+                cbf_nessessity = False
+                cbf = False
+                if cbf_nessessity:
+                    x = env.state
+                    tmp = bc.u_cbf(x, action)
+                    if action != tmp:
+                        cbf = True
+                        action = tmp
+
 
                 if self.processor is not None:
                     action = self.processor.process_action(action)
@@ -381,12 +422,12 @@ class Agent(object):
                         accumulated_info[key] += value
                     if _ == action_repetition-1:
                         com = 1
-                    his.append([observation[0], observation[1], action, com])
                     if d:
                         done = True
                         break
                 reward *= dt  # make sum to integral
-                reward += l * tau  # add tau reward
+                reward += tau * 0.01 * action[0]**2 + l * tau  # add tau reward
+                his.append([env.state[0], env.state[1], action, cbf, tau])
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     done = True
                 self.backward(reward, terminal=done)
@@ -420,7 +461,8 @@ class Agent(object):
 
             his = np.array(his)
             if his.shape != self.data_log[0].shape:
-                his = np.vstack((his, np.zeros((action_repetition * nb_max_episode_steps - his.shape[0], 4))))
+                print(nb_max_episode_steps, his.shape[0])
+                his = np.vstack((his, np.zeros((nb_max_episode_steps - his.shape[0], 5))))
             self.data_log[episode] = his
         callbacks.on_train_end()
         self._on_test_end()
@@ -564,7 +606,7 @@ class sample_Agent(object):
 
     def fit(self, env, nb_steps, action_repetition=1, callbacks=None, verbose=1,
             visualize=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
-            nb_max_episode_steps=None, l=1):
+            nb_max_episode_steps=None, tau=0.002):
         """Trains the agent on the given environment.
 
         # Arguments
@@ -599,6 +641,8 @@ class sample_Agent(object):
             raise ValueError('action_repetition must be >= 1, is {}'.format(action_repetition))
 
         self.training = True
+        action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
+        dt = tau / action_repetition
 
         callbacks = [] if not callbacks else callbacks[:]
 
@@ -678,17 +722,17 @@ class sample_Agent(object):
                 callbacks.on_step_begin(episode_step)
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
-                action_tau = self.forward(observation)
-                action = action_tau if action_tau.shape[0] == 1 else np.array([action_tau[0]])
+                action = self.forward(observation)
 
-                # in future, this module must work as self_triggered control
-                # so following sentence should be active 
-                '''
-                action_repetition = action_tau[1]
-                '''
-
-                # in future, if we want tau=1 agent, we can make it with
-                # tau_bool = 1 if round(action_tau[1]) == 1. else 0
+                # cbf certification for input
+                cbf_nessessity = True
+                if cbf_nessessity:
+                    x = env.state
+                    cbf = False
+                    tmp = bc.u_cbf(x, action)
+                    if action != tmp:
+                        cbf = True
+                        action = tmp
 
                 if self.processor is not None:
                     action = self.processor.process_action(action)
@@ -697,7 +741,7 @@ class sample_Agent(object):
                 done = False
                 for _ in range(action_repetition):
                     callbacks.on_action_begin(action)
-                    observation, r, done, info = env.step(action)
+                    observation, r, done, info = env.step(action, tau, dt)
                     observation = deepcopy(observation)
                     if self.processor is not None:
                         observation, r, done, info = self.processor.process_step(observation, r, done, info)
@@ -708,10 +752,11 @@ class sample_Agent(object):
                             accumulated_info[key] = np.zeros_like(value)
                         accumulated_info[key] += value
                     callbacks.on_action_end(action)
-                    r = r / action_repetition + l * action_repetition
                     reward += r
                     if done:
                         break
+                reward *= dt
+                reward -= 0.01 * tau * action[0]**2
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     # Force a terminal state.
                     done = True
@@ -762,7 +807,7 @@ class sample_Agent(object):
         return history
 
     def test(self, env, nb_episodes=1, action_repetition=1, callbacks=None, visualize=True,
-             nb_max_episode_steps=None, nb_max_start_steps=0, start_step_policy=None, verbose=1, l=1):
+             nb_max_episode_steps=None, nb_max_start_steps=0, start_step_policy=None, verbose=1, tau=0.002):
         """Callback that is called before training begins.
 
         # Arguments
@@ -798,8 +843,10 @@ class sample_Agent(object):
 
         self.training = False
         self.step = 0
-        self.data_log = np.zeros((nb_episodes, action_repetition * nb_max_episode_steps, 4))
+        self.data_log = np.zeros((nb_episodes, nb_max_episode_steps, 5))
         his = []
+        action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
+        dt = tau / action_repetition
 
         callbacks = [] if not callbacks else callbacks[:]
 
@@ -865,14 +912,17 @@ class sample_Agent(object):
             while not done:
                 callbacks.on_step_begin(episode_step)
 
-                action_tau = self.forward(observation)
-                action = action_tau if action_tau.shape[0] == 1 else np.array([action_tau[0]])
+                action = self.forward(observation)
 
-                # in future, this module must work as self_triggered control
-                # so following sentence should be active 
-                '''
-                action_repetition = action_tau[1]
-                '''
+                # cbf certification for input
+                cbf_nessessity = True
+                if cbf_nessessity:
+                    x = env.state
+                    cbf = False
+                    tmp = bc.u_cbf(x, action)
+                    if action != tmp:
+                        cbf = True
+                        action = tmp
 
                 if self.processor is not None:
                     action = self.processor.process_action(action)
@@ -881,13 +931,12 @@ class sample_Agent(object):
                 for _ in range(action_repetition):
                     com = 0
                     callbacks.on_action_begin(action)
-                    observation, r, d, info = env.step(action)
+                    observation, r, d, info = env.step(action, tau, dt)
                     observation = deepcopy(observation)
                     if self.processor is not None:
                         observation, r, d, info = self.processor.process_step(observation, r, d, info)
                     callbacks.on_action_end(action)
-                    r = r / action_repetition + l * action_repetition
-                    reward = r
+                    reward += r
                     for key, value in info.items():
                         if not np.isreal(value):
                             continue
@@ -896,10 +945,12 @@ class sample_Agent(object):
                         accumulated_info[key] += value
                     if _ == action_repetition-1:
                         com = 1
-                    his.append([observation[0], observation[1], action, com])
                     if d:
                         done = True
                         break
+                reward *= dt
+                reward -= 0.01 * tau * action[0]**2
+                his.append([env.state[0], env.state[1], action, cbf, tau])
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     done = True
                 self.backward(reward, terminal=done)
@@ -933,7 +984,7 @@ class sample_Agent(object):
 
             his = np.array(his)
             if his.shape != self.data_log[0].shape:
-                his = np.vstack((his, np.zeros((action_repetition * nb_max_episode_steps - his.shape[0], 4))))
+                his = np.vstack((his, np.zeros((nb_max_episode_steps - his.shape[0], 5))))
             self.data_log[episode] = his
         callbacks.on_train_end()
         self._on_test_end()

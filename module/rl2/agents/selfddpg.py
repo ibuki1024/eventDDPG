@@ -593,7 +593,7 @@ class sampleDDPGAgent(sample_Agent):
             terminal1_batch = np.array(terminal1_batch)
             reward_batch = np.array(reward_batch)
             action_batch = np.array(action_batch)
-            assert reward_batch.shape == (self.batch_size,)
+            assert reward_batch.shape == (self.batch_size,), f'{reward_batch.shape}, {(self.batch_size,)}'
             assert terminal1_batch.shape == reward_batch.shape
             assert action_batch.shape == (self.batch_size, self.nb_actions), (action_batch.shape, (self.batch_size, self.nb_actions))
 

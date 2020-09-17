@@ -207,7 +207,7 @@ def multiple_tanh(x, ratio=10.):
     return ratio * K.tanh(x)
 
 
-def self_trigger_output(tensor):
+def self_trigger_output(tensor, minimum=0.001):
     """multiple_tanh and sigmoid.
 
     This activation function is expected to be used in output layer.
@@ -225,7 +225,30 @@ def self_trigger_output(tensor):
     second_tensor = K.cast(second_tensor, dtype)
 
     input_signal = multiple_tanh(tensor)
-    tau = K.sigmoid(tensor)
+    tau = 0.1 * K.sigmoid(tensor) + K.constant(minimum)
+    out = K.add(K.multiply(input_signal, first_tensor), K.multiply(tau, second_tensor))
+
+    return out
+
+def sample_value_test(tensor, minimum=0.001):
+    """multiple_tanh and sigmoid.
+
+    This activation function is expected to be used in output layer.
+    """
+    dtype = tensor.dtype
+    shape = (tensor.shape[1],)
+    first_array = np.zeros(shape)
+    first_array[0] = 1 # [1,0,0,....]
+    second_array = np.ones(shape)
+    second_array[0] = 0 # [0,1,1,...]
+
+    first_tensor = K.constant(first_array)
+    first_tensor = K.cast(first_tensor, dtype)
+    second_tensor = K.constant(second_array)
+    second_tensor = K.cast(second_tensor, dtype)
+
+    input_signal = multiple_tanh(tensor)
+    tau = K.sigmoid(tensor) + K.constant(minimum)
     out = K.add(K.multiply(input_signal, first_tensor), K.multiply(tau, second_tensor))
 
     return out

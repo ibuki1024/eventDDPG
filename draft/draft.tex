@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 9.7}}}
+\title{\large{\bf{進捗報告 9.14}}}
 \author{M2 竹内 維吹}
 \date{\today}
 \begin{document}
@@ -39,30 +39,25 @@
 
 
 \section{前提}
-対象のシステムが
+入力アフィン系のセルフトリガー制御を考える. 
 \begin{equation}
 	\dot{s} = f(s) + g(s)a \label{continuous}
 \end{equation}
-と書かれており, これを離散化したシステムが
-\begin{equation}
-	s_{t+1} = f_{d}(s_t) + g_d(s_t)a_t \label{dynamics}
-\end{equation}
-であるとする. 本研究ではこのような入力アフィン系のセルフトリガー制御を考える. 
 
 \subsection{倒立振子による実験}
 倒立時の振子の角度を$\theta=0$とし, 加えられる入力が$A=[-10\textrm{N}\cdot\textrm{m},10\textrm{N}\cdot\textrm{m}]$と制限されるような倒立振子を考える.この倒立振子のダイナミクスは, 以下のように与えられる.
 \begin{equation}
 	\odif{}{t}\begin{pmatrix}\theta \\ \dot{\theta}\end{pmatrix} = 
-		\begin{pmatrix}\dot{\theta} \\ \frac{3g}{2l}\sin{\theta} + \frac{3}{ml^2}a \end{pmatrix} \label{continuous}
+		\begin{pmatrix}\dot{\theta} \\ \frac{3g}{2l}\sin{\theta} + \frac{3}{ml^2}a \end{pmatrix} \label{pendulum}
 \end{equation}
 
 コンピュータで強化学習を行う場合, これを離散化したシステムについて計算を行う必要がある.上記の状態方程式を離散化すると以下のようになる.
 \begin{align}
-	\theta_{t+1} &= \theta_t+\dot{\theta}_t\delta_t+\frac{3g}{2l}\sin{\theta_t}\delta_t^2+\frac{3}{ml^2}a\delta_t^2 \tag{2a}\\
-	\dot{\theta}_{t+1} &=  \dot{\theta}_t+\frac{3g}{2l}\sin{\theta_t}\delta_t+\frac{3}{ml^2}a\delta_t \tag{2b}
+	\theta_{t+1} &= \theta_t+\dot{\theta}_t\delta_t+\frac{3g}{2l}\sin{\theta_t}\delta_t^2+\frac{3}{ml^2}a\delta_t^2 \tag{3a}\\
+	\dot{\theta}_{t+1} &=  \dot{\theta}_t+\frac{3g}{2l}\sin{\theta_t}\delta_t+\frac{3}{ml^2}a\delta_t \tag{3b}
 \end{align}\label{pend}
-\setcounter{equation}{2}
-ただし, $\delta_t$は離散化定数であり$\delta_t=0.005$とする.\par
+\setcounter{equation}{3}
+ただし, $\delta_t$は離散化定数である.\par
 
 
 \section{現状確認}
@@ -73,7 +68,7 @@
  	\includegraphics[width=10cm]{event.png}
  	\caption{制御系} \label{image}
 \end{figure}\par
-これに対するフィードバック制御を考える. 状態変数$s$を観測してアクチュエータに入力信号を送信することを「インタラクション」と呼ぶと,セルフトリガー制御では, 毎時刻インタラクションは行わずに, 次のインタラクションを何ステップ後に行うかをエージェントが決定する. それを数式上で表すため, エージェントの制御則$\pi(s)$は2つの要素からなるベクトル値関数であるとし, 1つ目の要素はアクチュエータに送信する入力$a$,~2つ目の要素は次にインタラクションを行うまでの時間間隔$\tau$を表すものとする.また, 次のインタラクションを行う時刻までは1つ前のインタラクションで送信した入力$a$を加え続けるものとする(ZOH制御).
+これに対するフィードバック制御を考える. 状態変数$s$を観測してアクチュエータに入力信号を送信することを「インタラクション」と呼ぶと,セルフトリガー制御では, 連続的なインタラクションは行わずに, 次のインタラクションを何秒後に行うかをエージェントが決定する. それを数式上で表すため, エージェントの制御則$\pi(s)$は2つの要素からなるベクトル値関数であるとし, 1つ目の要素はアクチュエータに送信する入力$a$,~2つ目の要素は次にインタラクションを行うまでの時間間隔$\tau~(s:秒)$を表すものとする.また, 次のインタラクションを行う時刻までは1つ前のインタラクションで送信した入力$a$を加え続けるものとする(ZOH制御).
 
 \subsection{目標点の確認}
 研究を通しての目標は「安全性を確保しながら, 最適セルフトリガー制御則$\pi^{*}$の強化学習を実現させること」である。ここで
@@ -81,29 +76,29 @@
 	\pi^{*} &= \argmax_{\pi}J(\pi) \\
 	J(\pi) &= \expect_{s_0\in d_0}[V^{\pi}(s_0)] \\
 	% V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i\{-s_i^{\top}Qs_i-\pi_1(s_i)^{\top}R\pi_1(s_i)+\lambda \pi_2(s_i)\} \\
-	V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i C^{\pi}_i\\
-	C^{\pi}_i &= -\int_{T_i}^{T_{i+1}}(s_t^{\top}Qs_t+\tau_ia_i^{\top}Ra_i)\textrm{d}t + \lambda \tau_i, ~T_i = \sum_{l=0}^{i} \tau_l
+	V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i C^{\pi}_i \label{value} \\
+	C^{\pi}_i &= -\int_{T_i}^{T_{i+1}}(s(t)^{\top}Qs(t)+\tau_ia_i^{\top}Ra_i)\textrm{d}t + \lambda \tau_i, ~T_i = \sum_{l=0}^{i} \tau_l \label{reward}
 \end{align}
-であり,~$\pi_1, \pi_2$は$\pi$の第1,第2成分である. また, $k$は通しのステップ数, $i$はインタラクションの回数を示し, $a_i, \tau_i$はそれぞれ$i$回目のインタラクションでの方策$\pi$の出力である. \par
+であり,~$\pi_1, \pi_2$は$\pi$の第1,第2成分である. また, $i$はインタラクションの回数を示し, $a_i, \tau_i$はそれぞれ$i$回目のインタラクションでの方策$\pi$の出力である. \par
+さて, 一般的に強化学習では, 1ステップ1ステップの行動の良し悪しを評価して方策を更新していく. 
+インタラクションとインタラクションの間の区間を「インターバル」と呼ぶと, 式(\ref{value})より, この問題は各インターバルを1ステップとした強化学習問題であると考えることができる. \par
 以下では方策$\pi$を$\theta$でパラメトライズし, $\theta^{*} = \argmax_{\theta}J(\pi_{\theta})$を解くことによって$\pi^{*} = \argmax_{\pi}J(\pi)$を得るものとする. 方策勾配を用いた強化学習では$\nabla_{\theta}J(\pi)$を用いて$\theta^{*}$を求める. その際方策勾配$\nabla_{\theta}J(\pi)$の近似のため, 実環境とのインタラクションによって得られたデータ組$\{s,a,r,s^{\prime}\}$を用いる. 「学習中の安全」という言葉を, 「このデータ組の収集を決められた安全領域$\mathcal{C}$の内部でのみ行うこと」と定義する.\par
 
 
 \subsection{実現可能性の検証:サンプル値系での実験}
-上記の目標を達成する見込みがあるのかを検証するために, サンプル値系での実験を行う. サンプル値系では,セルフトリガー制御と同様に毎ステップのインタラクションは行わない. セルフトリガー制御との違いは, インタラクションの間隔がエージェントによって状態$s$依存で決定するのではなく, 制御問題の設定として定数$t_{\rm{int}}$で与えられる点である.したがってサンプル値系での制御方策$\pi_{\rm{sample}}$は,アクチュエータに送信する入力信号$a$のみを出力する関数として与える.\par
-サンプル値系での実験により, $t_{\rm{int}}=1$のサンプル値系での最適方策
+上記の目標を達成する見込みがあるのかを検証するために, サンプル値系での実験を行う. サンプル値系では,セルフトリガー制御と同様に連続的なインタラクションは行わない. セルフトリガー制御との違いは, インタラクションの間隔がエージェントによって状態$s$依存で決定するのではなく, 制御問題の設定として定数$t_{\rm{int}}$で与えられる点である.したがってサンプル値系での制御方策$\pi_{\rm{sample}}$は,アクチュエータに送信する入力信号$a$のみを出力する関数として与える.\par
+サンプル値系での実験により, $t_{\rm{int}}=0.001(s)$のサンプル値系での最適方策
 \begin{align}
 \begin{cases}
-	\pi_{\rm{sample},1} = \argmax_{\pi_{\rm{sample}}} \sum_{i=0}^{\infty} \gamma^i(-s_i^{\top}Qs_i-a_i^{\top}Ra_i) \\
-	a_i  = \pi_{\rm{sample}}(s_i)
+	\pi_{\rm{sample},1} = -\argmax_{\pi_{\rm{sample}}} \displaystyle\sum_{i=0}^{\infty} \int_{it_{\rm{int}}}^{(i+1)t_{\rm{int}}}(s(t)^{\top}Qs(t)+a_i^{\top}Ra_i)\textrm{d}t \\
+	a_i  = \pi_{\rm{sample}}(s(it_{\rm{int}}))
 \end{cases}
 \end{align}
-を初期方策として,~$t_{\rm{int}}=2$のサンプル値系での最適方策
+を初期方策として,~$t_{\rm{int}}=0.002(s)$のサンプル値系での最適方策
 \begin{align}
 \begin{cases}
-	\pi_{\rm{sample},2} = \argmax_{\pi_{\rm{sample}}} \sum_{i=0}^{\infty} \gamma^i(-s_i^{\top}Qs_i-a_i^{\top}Ra_i) \\
-	a_i  = \begin{cases}
-			\pi_{\rm{sample}}(s_i)~(\textrm{if \textit{i} is odd})\\ a_{i-1} (\textrm{otherwise})
-		\end{cases}
+	\pi_{\rm{sample},2} = -\argmax_{\pi_{\rm{sample}}} \displaystyle\sum_{i=0}^{\infty} \int_{it_{\rm{int}}}^{(i+1)t_{\rm{int}}}(s(t)^{\top}Qs(t)+a_i^{\top}Ra_i)\textrm{d}t \\
+	a_i  = \pi_{\rm{sample}}(s(it_{\rm{int}}))
 \end{cases}
 \end{align}
  を学習中の安全性を満たしながら学習できるかを検証する. 
@@ -114,20 +109,17 @@
 \begin{align}
 \begin{cases}
 	\pi_1(s)=\pi_{\rm{sample},1}(s)\\
-	\pi_2(s)=1
+	\pi_2(s)=0.001
 \end{cases}
 \end{align}
 とする方策$\pi_{\rm{init}}$をセルフトリガー制御の強化学習のための初期方策として用いる.
 
-\subsection{現状持ち合わせているもの}
-現在,~$\pi_{\rm{sample},1}$と, その学習プログラムは作成しているが,~$\pi_{\rm{init}}$を作成することはまだできていない. \par
-その他, 持っている知識としてCBFとECBF\cite{ECBF}がある. 
- CBFを用いることによって, 状態$s$に対する安全な入力集合を与えることができる.またECBFによって, ZOH制御における, 安全領域を出ないような最大のインタラクション間隔$\tau_{\rm{max}}$を与えることができる.
-これらを踏まえて, 今後の研究の道筋を次節に記す.
+\section{安全性の定義}
+\subsection{インタラクション間隔$\tau$の安全性}
+ECBF(後から書きます)
 
-\section{今後の方針}
-\subsection{CBFを用いた安全入力について}
-\subsubsection{制御バリア関数(CBF)}
+
+\subsection{入力信号$a$の安全性}
 強化学習ではデータの収集に環境とのインタラクションを行う必要がある. DDPGと呼ばれるアルゴリズムは方策オン型の強化学習とよばれ, データの収集方策に学習中の暫定最適方策を用いる. したがって,学習初期の方策では安全性が保証されないことがしばしばある. この課題を解決するために, 制御バリア関数を用いる. \par
 関数$h(s)$が以下の条件を満たす時, システム(\ref{continuous})に対する制御バリア関数であるという. 
 \begin{equation}
@@ -152,15 +144,29 @@
 当面は, エージェントの出力$a_{\pi}$に最も近い$U(s)$の元への射影を考える.
 
 
-\subsubsection{離散化による影響}
-さて, 制御バリア関数による安全性保証は連続システムに対して行われるものであり, コンピュータ上でのシミュレーション環境である(\ref{dynamics})のような離散システムに対しては安全性の保証はできない. つまり,~$\mathcal{C}$の淵の状態に対して, 次ステップでの状態が$\mathcal{C}$を出てしまう可能性があるということである. そこで, 離散化が理由で多少$\mathcal{C}$が出てしまった場合, 最も効率の良い入力(例えば$\theta<0ならa=10$)を用いて, 人為的に$\mathcal{C}$の内部に戻すものとする.\par
-また, この問題は制御バリア関数による入力の補償を行う必要がある状況で起こりうるものであるため, その補償が執行されるのを回避するように学習させる方法はないか模索・検証したい. 
+
+\section{今後の方針}
+\subsection{シミュレーション環境の構築}
+さて, 制御バリア関数による安全性保証は連続システムに対して行われるものである. また, セルフトリガー制御則の第2成分$\tau$の出力ロジックを勾配によって更新できるように, $\tau$を連続値として扱う必要がある. しかし, コンピュータ上でシミュレーションを行うには(\ref{continuous})を時間に関して離散化を行わなくてはならない.\par
+そこで, インタラクション間隔$\tau$を整数個に等間隔に分割し, その時間幅を用いて離散化を行う. この時, 離散化幅は$0.001(s)\sim 0.005(s)$になるように分割数を調整する. $\delta_t$を上から抑える理由は離散化誤差を抑えるためである. ($\tau$を)下から抑えるのは,コンピュータ上で$\frac{1}{\infty}=0$となってしまうからで, それを回避するためである.\par
+ここで, 式(\ref{reward})のインターバル報酬$C^{\pi}_i$が定積分を用いて表されているため, これをシミュレーション環境で近似する手法を考える. ダイナミクス(\ref{continuous})の離散化幅$\delta_t$の離散近似システムが
+\begin{equation}
+	s_{t+1} = f_d(s_t, \delta_t) + g_d(s_t, \delta_t)a_t
+\end{equation}
+と書かれているとする. インタラクション間隔$\tau$を$N$分割した時, $\delta_t = \frac{\tau}{N}$を用いて
+\begin{equation}
+	C^{\pi}_i \approx -\delta_t\sum_{k=0}^{N}(s_{n_i+k}^{\top}Qs_{n_i+k}+\tau_ia_i^{\top}Ra_i) + \lambda \tau_i
+\end{equation}
+と近似する. ここで$s_{n_i}$は$i$回目のインタラクションを行った瞬間の状態変数$s(T_i)$と同じ値が代入されるものとする.\par
 
 \subsection{サンプル値系での検証}
-2.3節で記述した通り.
+2.3節で記述した通り, $t_{\textrm{int}}$が$0.001(s)$の最適方策$\pi_{\textrm{sample},1}$を初期値として,~$0.002(s)$の最適方策$\pi_{\textrm{sample},2}$を安全強化学習できるのか検証する. 本節ではその安全性の確保方法についてもう少し掘り下げて議論する.\par
+ECBFを用いることによって, 入力$a$に対するインタラクション間隔$\tau$の限界を与えることができる. その値を$\tau_{\textrm{max}}(a)$と書く. もし$\tau_{\textrm{max}}(a)<0.002$であるなら, CBFを用いて$U(s)$の元$a_{\textrm{safe}}$を選び$\tau_{\textrm{max}}(a_{\textrm{safe}})\geq0.002$となれば, 次のインタラクションまで$a_{\textrm{safe}}$を加え続けても状態変数が$\mathcal{C}$を出ていくことはない.しかし$\forall a \in U(s)$に対して$\tau_{\textrm{max}}(a)<0.002$であるなら, 次のインタラクションを$0.001(s)$後に行うことで, 安全性を確保する必要がある. ~($0.001\leq\tau_{\textrm{max}}(a)<0.002$を仮定)\par
+ここまでの議論を整理すると, 「サンプル値系における安全性保証」とは「1. 入力信号の安全性,~2. サンプル間隔の安全性」を保証することになる. これらが行われることを回避する学習方法については今後検討する.
+
 
 \subsection{セルフトリガー制御の強化学習}
-2.4節で記した初期方策$\pi_{\rm{init}}$から, 安全性を保証しながら最適セルフトリガー制御則$\pi^{*}$の学習を試みる. その際, CBFによる安全入力集合への射影に加えて, ECBFによる$\tau$に対する安全性保証も行う. 
+2.4節で記した初期方策$\pi_{\rm{init}}$から, 安全性を保証しながら最適セルフトリガー制御則$\pi^{*}$の学習を試みる. サンプル値系とは異なり, インタラクション間隔はエージェントが決定する. したがって, 方策関数の出力$\pi(s) = \begin{bmatrix}a & \tau\end{bmatrix}$に対して,~$\tau>\tau_{\textrm{max}}(a)$となった時には入力信号$a$を変更する方法と, 通信間隔$\tau$を変更する方法の二種類の選択があり, どちらを行うべきか考える必要がある.
 
 
 \begin{thebibliography}{10}
