@@ -217,7 +217,7 @@ class Agent(object):
                     if done:
                         break
                 reward *= dt  # make sum to integral
-                reward += tau * 0.01 * action[0]**2 + l * tau  # add tau reward
+                reward += - tau * 0.01 * action[0]**2 + l * tau  # add tau reward
                 accumulated_time += tau
                 if accumulated_time > 10.:
                     # Force a terminal state.
@@ -426,7 +426,7 @@ class Agent(object):
                         done = True
                         break
                 reward *= dt  # make sum to integral
-                reward += tau * 0.01 * action[0]**2 + l * tau  # add tau reward
+                reward += - tau * 0.01 * action[0]**2 + l * tau  # add tau reward
                 his.append([env.state[0], env.state[1], action, cbf, tau])
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     done = True

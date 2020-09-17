@@ -77,7 +77,7 @@
 	J(\pi) &= \expect_{s_0\in d_0}[V^{\pi}(s_0)] \\
 	% V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i\{-s_i^{\top}Qs_i-\pi_1(s_i)^{\top}R\pi_1(s_i)+\lambda \pi_2(s_i)\} \\
 	V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i C^{\pi}_i \label{value} \\
-	C^{\pi}_i &= -\int_{T_i}^{T_{i+1}}(s(t)^{\top}Qs(t)+\tau_ia_i^{\top}Ra_i)\textrm{d}t + \lambda \tau_i, ~T_i = \sum_{l=0}^{i} \tau_l \label{reward}
+	C^{\pi}_i &= -\int_{T_i}^{T_{i+1}}s(t)^{\top}Qs(t)\textrm{d}t +\tau_ia_i^{\top}Ra_i + \lambda \tau_i, ~T_i = \sum_{l=0}^{i} \tau_l \label{reward}
 \end{align}
 であり,~$\pi_1, \pi_2$は$\pi$の第1,第2成分である. また, $i$はインタラクションの回数を示し, $a_i, \tau_i$はそれぞれ$i$回目のインタラクションでの方策$\pi$の出力である. \par
 さて, 一般的に強化学習では, 1ステップ1ステップの行動の良し悪しを評価して方策を更新していく. 
@@ -90,14 +90,14 @@
 サンプル値系での実験により, $t_{\rm{int}}=0.001(s)$のサンプル値系での最適方策
 \begin{align}
 \begin{cases}
-	\pi_{\rm{sample},1} = -\argmax_{\pi_{\rm{sample}}} \displaystyle\sum_{i=0}^{\infty} \int_{it_{\rm{int}}}^{(i+1)t_{\rm{int}}}(s(t)^{\top}Qs(t)+a_i^{\top}Ra_i)\textrm{d}t \\
+	\pi_{\rm{sample},1} = -\argmax_{\pi_{\rm{sample}}} \displaystyle\sum_{i=0}^{\infty} \int_{it_{\rm{int}}}^{(i+1)t_{\rm{int}}}s(t)^{\top}Qs(t)\textrm{d}t + t_{\rm{int}}a_i^{\top}Ra_i \\
 	a_i  = \pi_{\rm{sample}}(s(it_{\rm{int}}))
 \end{cases}
 \end{align}
 を初期方策として,~$t_{\rm{int}}=0.002(s)$のサンプル値系での最適方策
 \begin{align}
 \begin{cases}
-	\pi_{\rm{sample},2} = -\argmax_{\pi_{\rm{sample}}} \displaystyle\sum_{i=0}^{\infty} \int_{it_{\rm{int}}}^{(i+1)t_{\rm{int}}}(s(t)^{\top}Qs(t)+a_i^{\top}Ra_i)\textrm{d}t \\
+	\pi_{\rm{sample},2} = -\argmax_{\pi_{\rm{sample}}} \displaystyle\sum_{i=0}^{\infty} \int_{it_{\rm{int}}}^{(i+1)t_{\rm{int}}}s(t)^{\top}Qs(t)\textrm{d}t + t_{\rm{int}}a_i^{\top}Ra_i  \\
 	a_i  = \pi_{\rm{sample}}(s(it_{\rm{int}}))
 \end{cases}
 \end{align}
@@ -155,7 +155,7 @@ ECBF(後から書きます)
 \end{equation}
 と書かれているとする. インタラクション間隔$\tau$を$N$分割した時, $\delta_t = \frac{\tau}{N}$を用いて
 \begin{equation}
-	C^{\pi}_i \approx -\delta_t\sum_{k=0}^{N}(s_{n_i+k}^{\top}Qs_{n_i+k}+\tau_ia_i^{\top}Ra_i) + \lambda \tau_i
+	C^{\pi}_i \approx -\delta_t\sum_{k=0}^{N}s_{n_i+k}^{\top}Qs_{n_i+k}+\tau_ia_i^{\top}Ra_i + \lambda \tau_i
 \end{equation}
 と近似する. ここで$s_{n_i}$は$i$回目のインタラクションを行った瞬間の状態変数$s(T_i)$と同じ値が代入されるものとする.\par
 
