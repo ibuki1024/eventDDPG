@@ -225,7 +225,7 @@ def self_trigger_output(tensor, minimum=0.001):
     second_tensor = K.cast(second_tensor, dtype)
 
     input_signal = multiple_tanh(tensor)
-    tau = 0.1 * K.sigmoid(tensor) + K.constant(minimum)
+    tau = 0.099 * K.sigmoid(tensor) + K.constant(minimum)
     out = K.add(K.multiply(input_signal, first_tensor), K.multiply(tau, second_tensor))
 
     return out
