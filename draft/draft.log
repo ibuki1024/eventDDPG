@@ -1,4 +1,4 @@
-This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  18 SEP 2020 08:23
+This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  23 SEP 2020 19:04
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -402,22 +402,49 @@ File: control_log.png Graphic file (type bmp)
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-LaTeX Font Info:    Font shape `JT1/mc/m/it' in size <10> not available
-(Font)              Font shape `JT1/mc/m/n' tried instead on input line 214.
+[6]
+File: tau_dependency_of_initial_policy.png Graphic file (type bmp)
+<tau_dependency_of_initial_policy.png>
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 214.
-LaTeX Font Info:    Font shape `JY1/mc/m/it' in size <10> not available
-(Font)              Font shape `JY1/mc/m/n' tried instead on input line 214.
-LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 214.
-[6] [7] (./draft.aux) ) 
-Here is how much of TeX's memory you used:
- 2795 strings out of 493281
- 35715 string characters out of 6145042
- 119465 words of memory out of 5000000
- 6642 multiletter control sequences out of 15000+600000
- 27143 words of font info for 118 fonts, out of 8000000 for 9000
- 934 hyphenation exceptions out of 8191
- 27i,16n,25p,618b,374s stack positions out of 5000i,500n,10000p,200000b,80000s
+(Font)              scaled to size 5.76599pt on input line 224.
 
-Output written on draft.dvi (7 pages, 27156 bytes).
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+File: tau_dependency_of_last_policy.png Graphic file (type bmp)
+<tau_dependency_of_last_policy.png>
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+File: tau_dependency_of_state.png Graphic file (type bmp)
+<tau_dependency_of_state.png>
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[7]
+File: state_log_and_tau.png Graphic file (type bmp)
+<state_log_and_tau.png>
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[8]
+LaTeX Font Info:    Font shape `JT1/mc/m/it' in size <10> not available
+(Font)              Font shape `JT1/mc/m/n' tried instead on input line 255.
+LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
+(Font)              scaled to size 9.60999pt on input line 255.
+LaTeX Font Info:    Font shape `JY1/mc/m/it' in size <10> not available
+(Font)              Font shape `JY1/mc/m/n' tried instead on input line 255.
+LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
+(Font)              scaled to size 9.60999pt on input line 255.
+ [9] [10] (./draft.aux) ) 
+Here is how much of TeX's memory you used:
+ 2824 strings out of 493281
+ 36526 string characters out of 6145042
+ 119499 words of memory out of 5000000
+ 6663 multiletter control sequences out of 15000+600000
+ 29499 words of font info for 127 fonts, out of 8000000 for 9000
+ 934 hyphenation exceptions out of 8191
+ 27i,16n,25p,618b,401s stack positions out of 5000i,500n,10000p,200000b,80000s
+
+Output written on draft.dvi (10 pages, 32432 bytes).

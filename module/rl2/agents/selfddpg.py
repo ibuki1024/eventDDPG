@@ -15,6 +15,20 @@ from rl2.util import *
 def mean_q(y_true, y_pred):
     return K.mean(K.max(y_pred, axis=-1))
 
+
+def _all_weights(layers):
+    out = []
+    for layer in layers:
+        out.append(layer.get_weights())
+    return out
+
+
+def push_out(arr, insert_object):
+    arr.append(insert_object)
+    del arr[0]
+    return arr
+
+
 # Deep DPG as described by Lillicrap et al. (2015)
 # http://arxiv.org/pdf/1509.02971v2.pdf
 # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.646.4324&rep=rep1&type=pdf
@@ -79,6 +93,13 @@ class selfDDPGAgent(Agent):
         self.critic_action_input = critic_action_input
         self.critic_action_input_idx = self.critic.input.index(critic_action_input)
         self.memory = memory
+
+        # ibuki_made
+        arr = []
+        for _ in range(100):
+            tmp = _all_weights(self.actor.layers)
+            arr.append(tmp)
+        self.agents_log = arr  # とりあえずなんでもいい
 
         # State.
         self.compiled = False
@@ -312,7 +333,6 @@ class selfDDPGAgent(Agent):
                 if self.processor is not None:
                     metrics += self.processor.metrics
 
-            tmp = self.actor.layers[4].get_weights()[0]
             # Update actor, if warm up is over.
             if self.step > self.nb_steps_warmup_actor:
                 # TODO: implement metrics for actor
@@ -324,14 +344,22 @@ class selfDDPGAgent(Agent):
                     inputs += [self.training]
                 action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
                 assert action_values.shape == (self.batch_size, self.nb_actions)
-            actor_outputlayer_diff = tmp - self.actor.layers[4].get_weights()[0]
-            diff_mean = np.mean(np.abs(actor_outputlayer_diff), axis=0)
-            self.outputlayer_param_mean.append(diff_mean)
 
         if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
             self.update_target_models_hard()
-
+        
         return metrics
+    
+    # ibuki made function
+    def save_agents_log(self):
+        tmp = _all_weights(self.actor.layers)
+        self.agents_log = push_out(self.agents_log, tmp)
+
+
+    def agent_copy_from_layers(self, weights):
+        for i, layer in enumerate(weights):
+            self.actor.layers[i].set_weights(layer)
+
 
 class sampleDDPGAgent(sample_Agent):
     """Write me

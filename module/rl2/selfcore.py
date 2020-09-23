@@ -88,6 +88,8 @@ class Agent(object):
             raise ValueError('action_repetition must be >= 1, is {}'.format(action_repetition))
 
         self.training = True
+
+        self.watched_states = []
         
         # original parameters
         accumulated_time = 0
@@ -224,6 +226,11 @@ class Agent(object):
                     done = True
                 metrics = self.backward(reward, terminal=done)
                 episode_reward += reward
+                self.watched_states.append(env.state)
+
+                # save last n step agents for checking how the tau(s) changes step by step
+                if self.step > 1000:
+                    self.save_agents_log()         
 
                 step_logs = {
                     'action': action,
@@ -566,6 +573,10 @@ class Agent(object):
         """Callback that is called after testing ends."
         """
         pass
+
+    # ibuki_made method for checking tau learning
+    def save_agents_log(self):
+        raise NotImplementedError()
 
 
 class sample_Agent(object):

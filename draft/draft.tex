@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 9.18}}}
+\title{\large{\bf{進捗報告 9.25}}}
 \author{M2 竹内 維吹}
 \date{\today}
 \begin{document}
@@ -110,7 +110,7 @@
 \begin{cases}
 	\pi_1(s)=\pi_{\rm{sample},1}(s)\\
 	\pi_2(s)=0.001
-\end{cases}
+\end{cases} \label{pi_init}
 \end{align}
 とする方策$\pi_{\rm{init}}$をセルフトリガー制御の強化学習のための初期方策として用いる.
 
@@ -208,6 +208,47 @@ ECBFを用いることによって, 入力$a$に対するインタラクショ�
 \end{figure}
 図\ref{control_log}を見ると, おおよそ振り子を倒立させ続けられていることがわかる.しかし注目したいのは$\tau$の変化である.本来セルフトリガー制御は状態$s$によって様々な値をとるはずであるが, 
 ほぼ一定値となってしまっている. このことから「倒立時は長くインターバルを空け, 倒れ出した時に多くインタラクションを行う」というほども高度なことを学習できていない. また, これは果たしてリーズナブルな結果なのかも今後明らかにして行きたい.
+
+\section{$\tau(s)$の学習の様子}
+前節で, エピソード(10秒間の制御)毎にその間の$\tau(s)$の平均値を追うと,~0.001から0.1に急激に変化していることを確認した.また, ~5.3節では, 200000ステップの学習によって得られた方策によって決定される$\tau(s)$がインターバルの間ずっと0.1となっていることも確認した. \par
+そこで, 本節では$\tau(s)$を正しく$s$依存の関数として学習して, その結果このように「張り付く」ような結果になっているのか否かを確認する. 
+
+\subsection{検証方法}
+方策関数$\pi_{\theta}(s)$のパラメータ$\theta$は1ステップごとに行われる. したがってその1要素である関数としての$\tau(s)$の1ステップごとに更新される. ここでは学習途中のとある100ステップ分の$\tau(s)$を取り出し, ~$\theta\in [-\pi, \pi], \dot{\theta}\in [-8,8]$の範囲からランダムに500個$s$を選び, その$s$に対する$\tau(s)$の変化を確認する.
+
+\subsection{$\tau(s)$の変化}
+まず初めに$\pi_{\textrm{init}}$による$\tau(s)$をみてみる.
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=10cm]{tau_dependency_of_initial_policy.png}
+ 	\caption{$\pi_{\textrm{init}}$の$\tau(s)$}
+\end{figure}\\
+これは式\eqref{pi_init}の通りである.\par
+では次に5.3節で確認した方策$\pi_a$による$\tau(s)$をみてみる.
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=10cm]{tau_dependency_of_last_policy.png}
+ 	\caption{$\pi_a$の$\tau(s)$} \label{last_policy_tau}
+\end{figure}\\
+図\ref{last_policy_tau}をみると, ほとんど全ての状態で$\pi_a(s)=0.1$となっていることがわかる.\par
+では, これらの途中にはどのような変化があったのかを確認する. 
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=10cm]{tau_dependency_of_state.png}
+ 	\caption{学習が進むにつれてどのように$\tau(s)$が変わるのか} \label{on_the_way}
+\end{figure}\\
+図\ref{on_the_way}は6.1節で述べた, 学習中のとある100ステップ分の関数$\tau(s)$のうち, 等間隔に10個選んだものをプロットしたものである. 図の同じ色の点は同じ関数$\tau(s)$による出力を表し, 青色から緑色にかけて学習が進んだものを表す.図\ref{on_the_way}をみると, 少しづつ$\tau(s)=0.1$となる領域が大きくなっていることがわかる. \par
+
+\subsection{結果の考察}
+前節での結果から,~$\tau(s)$はきちんと$s$の関数として学習(しようと)していることがわかった. では図\ref{on_the_way}で$\tau(s)=0.1$となる領域はどのようにして決まっているのか. それを確認するために, 学習途中にエージェントが経験した状態$s$のログを録ってみた. それと$\tau(s)=0.1$となる領域が関係するのか, 図\ref{state_log_and_tau}をみる.
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=10cm]{state_log_and_tau.png}
+ 	\caption{経験した$s$と$\tau(s)=0.1$となる領域}  \label{state_log_and_tau}
+\end{figure}\\
+図\ref{state_log_and_tau}でオレンジ色で表しているのは, エージェントが実際に経験した状態変数のパスである(3次元空間で比較しやすいように`tau`座標を与えた).これをみると, 経験した状態$s$の領域が$\tau(s)=0.1$となる領域となっていることがわかる. これは
+\newpage
+
 
 \begin{thebibliography}{10}
 \bibitem{ECBF}
