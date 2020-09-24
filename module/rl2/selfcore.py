@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 from keras2.callbacks import History
+import time
 
 import rl2.barrier_certificate as bc
 
@@ -176,6 +177,7 @@ class Agent(object):
                 action = action_tau if action_tau.shape[0] == 1 else np.array([action_tau[0]])
 
                 tau = action_tau[1]
+                print('\r' + f'{self.step}: {tau}', end='')
                 action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
                 dt = tau / action_repetition
 

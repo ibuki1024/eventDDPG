@@ -96,7 +96,7 @@ class selfDDPGAgent(Agent):
 
         # ibuki_made
         arr = []
-        for _ in range(100):
+        for _ in range(500):
             tmp = _all_weights(self.actor.layers)
             arr.append(tmp)
         self.agents_log = arr  # とりあえずなんでもいい

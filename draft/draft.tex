@@ -246,7 +246,21 @@ ECBFを用いることによって, 入力$a$に対するインタラクショ�
  	\includegraphics[width=10cm]{state_log_and_tau.png}
  	\caption{経験した$s$と$\tau(s)=0.1$となる領域}  \label{state_log_and_tau}
 \end{figure}\\
-図\ref{state_log_and_tau}でオレンジ色で表しているのは, エージェントが実際に経験した状態変数のパスである(3次元空間で比較しやすいように`tau`座標を与えた).これをみると, 経験した状態$s$の領域が$\tau(s)=0.1$となる領域となっていることがわかる. これは
+図\ref{state_log_and_tau}でオレンジ色で表しているのは, エージェントが実際に経験した状態変数のパスである(3次元空間で比較しやすいように`tau`座標を与えた).これをみると, 経験した状態$s$の領域が$\tau(s)=0.1$となる領域となっていることがわかる. これは$\lambda$が大きすぎる,~勾配法の学習率が大きすぎる, のどちらかを改善する必要がありそうである. \par
+図\ref{average_tau}でもみた通り$\lambda$を小さくしても$\tau(s)=0.1$に張り付いてしまう傾向は変わらない.\par
+では,~$\tau(s)$の更新幅を小さくする方法を考える.~$\tau(s)$は図\ref{actor_NN}のように$\pi_{\theta}(s)$を表現するニューラルネットワークの出力の1つとして与えているので, $\tau(s)$の学習率のみを小さくすることはできない(入力信号$a(s)$の学習も遅くなってしまう).
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=10cm]{actor_NN.png}
+ 	\caption{方策$\pi_{\theta}(s)$}  \label{actor_NN}
+\end{figure}\\
+そこで, $a(s)と\tau(s)$をそれぞれ別のニューラルネットワークで表現してはどうだろうかと考えている.
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=10cm]{split_NN.png}
+ 	\caption{方策$\pi_{\theta}(s)$の分離}  \label{split_NN}
+\end{figure}\\
+
 \newpage
 
 
