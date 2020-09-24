@@ -38,7 +38,7 @@ class selfDDPGAgent(Agent):
     def __init__(self, nb_actions, actor, critic, critic_action_input, memory, input_clipper=10.,
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
-                 random_process=None, custom_model_objects={}, target_model_update=.001,clip_com=0.1, **kwargs):
+                 random_process=None, original_noise=False, custom_model_objects={}, target_model_update=.001,clip_com=0.1, **kwargs):
         if hasattr(actor.output, '__len__') and len(actor.output) > 1:
             raise ValueError('Actor "{}" has more than one output. DDPG expects an actor that has a single output.'.format(actor))
         if hasattr(critic.output, '__len__') and len(critic.output) > 1:
@@ -78,6 +78,7 @@ class selfDDPGAgent(Agent):
         self.nb_steps_warmup_actor = nb_steps_warmup_actor
         self.nb_steps_warmup_critic = nb_steps_warmup_critic
         self.random_process = random_process
+        self.original_noise = original_noise
         self.delta_clip = delta_clip
         self.gamma = gamma
         self.target_model_update = target_model_update
@@ -223,9 +224,19 @@ class selfDDPGAgent(Agent):
             return batch
         return self.processor.process_state_batch(batch)
 
+    def add_noise(self, action):
+        a, tau = action
+        a_noise = np.random.randn() / 2.
+        tau_noise = np.random.randn() * 1e-2
+        a = np.clip(a + a_noise, -self.input_clipper, self.input_clipper)
+        tau = np.clip(tau + tau_noise, 0.001, 0.1)
+        return np.array([a, tau])
+
     def select_action(self, state):
         batch = self.process_state_batch([state])
         action = self.actor.predict_on_batch(batch).flatten()
+        if self.training and self.original_noise:
+            action = self.add_noise(action)
 
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
@@ -359,6 +370,9 @@ class selfDDPGAgent(Agent):
     def agent_copy_from_layers(self, weights):
         for i, layer in enumerate(weights):
             self.actor.layers[i].set_weights(layer)
+
+    # TODO: tau and inputsignal logic
+    # implement combine_tau_input(self, tau_NN, input_NN)
 
 
 class sampleDDPGAgent(sample_Agent):

@@ -4,7 +4,6 @@ from copy import deepcopy
 
 import numpy as np
 from keras2.callbacks import History
-import time
 
 import rl2.barrier_certificate as bc
 
@@ -53,7 +52,7 @@ class Agent(object):
         return {}
 
     def fit(self, env, nb_steps, action_repetition=1, callbacks=None, verbose=1,
-            visualize=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
+            visualize=False, step_log=False, original_log=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
             nb_max_episode_steps=None, l=1):
         """Trains the agent on the given environment.
 
@@ -130,6 +129,7 @@ class Agent(object):
         try:
             while self.step < nb_steps:
                 if observation is None:  # start of a new episode
+                    explosion = False
                     callbacks.on_episode_begin(episode)
                     episode_step = np.int16(0)
                     episode_reward = np.float32(0)
@@ -177,7 +177,6 @@ class Agent(object):
                 action = action_tau if action_tau.shape[0] == 1 else np.array([action_tau[0]])
 
                 tau = action_tau[1]
-                print('\r' + f'{self.step}: {tau}', end='')
                 action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
                 dt = tau / action_repetition
 
@@ -223,6 +222,8 @@ class Agent(object):
                 reward *= dt  # make sum to integral
                 reward += - tau * 0.01 * action[0]**2 + l * tau  # add tau reward
                 accumulated_time += tau
+                if step_log:
+                    print('\r' + f'{self.step}: tau = {tau}, state = {env.state}', end='')
                 if accumulated_time > 10.:
                     # Force a terminal state.
                     done = True
@@ -232,7 +233,12 @@ class Agent(object):
 
                 # save last n step agents for checking how the tau(s) changes step by step
                 if self.step > 1000:
-                    self.save_agents_log()         
+                    self.save_agents_log()   
+
+                # to save laerning time, we stop testing if theta_dot is exploded
+                if abs(env.state[1]) > 10:
+                    done = True
+                    explosion = True
 
                 step_logs = {
                     'action': action,
@@ -254,6 +260,10 @@ class Agent(object):
                     # always non-terminal by convention.
                     self.forward(observation)
                     self.backward(0., terminal=False)
+                    if original_log:
+                        print()
+                        print(f'episode_end, average_tau = {tau}, explosion = {explosion}')
+                        print()
 
                     # This episode is finished, report and reset.
                     episode_logs = {
