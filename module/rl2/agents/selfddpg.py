@@ -396,6 +396,7 @@ class selfDDPGAgent2(selfDDPGAgent):
                  delta_clip=delta_clip,
                  random_process=random_process, custom_model_objects=custom_model_objects,
                  target_model_update=target_model_update)
+        self.gradient_log = []
         
     def compile(self, optimizer, metrics=[], action_lr=0.001, tau_lr=0.00001):
         metrics += [mean_q]
@@ -453,6 +454,12 @@ class selfDDPGAgent2(selfDDPGAgent):
         combined_inputs[self.critic_action_input_idx] = self.actor(state_inputs)
         combined_output = self.critic(combined_inputs) # Q(s,a|θ^Q)を示してる
 
+        # 学習の進捗を確認するために, 全パラメータに対するgradientを確認する
+        dummy_optimizer = optimizers.Optimizer()
+        self.combined_inputs = combined_inputs
+        self.loss_func = -K.mean(combined_output)
+        self.gradients = dummy_optimizer.get_gradients(-K.mean(combined_output), self.actor.trainable_weights)
+
         # action_params_update と tau_params_updateで分ける
         action_tw, tau_tw = self._split_params()
         # action params update
@@ -493,12 +500,133 @@ class selfDDPGAgent2(selfDDPGAgent):
             else:
                 tau_tw.append(tw[i])
         return action_tw, tau_tw
+        
+    # in progress
+    def backward2(self, reward, terminal=False):
+        # Store most recent experience in memory.
+        if self.step % self.memory_interval == 0:
+            self.memory.append(self.recent_observation, self.recent_action, reward, terminal,
+                               training=self.training)
+
+        metrics = [np.nan for _ in self.metrics_names]
+        if not self.training:
+            # We're done here. No need to update the experience memory since we only use the working
+            # memory to obtain the state over the most recent observations.
+            return metrics
+
+        # Train the network on a single stochastic batch.
+        can_train_either = self.step > self.nb_steps_warmup_critic or self.step > self.nb_steps_warmup_actor
+        if can_train_either and self.step % self.train_interval == 0:
+            # Make a mini-batch to learn. So batch learning is done in every time steps.
+            #This is based on the paper.
+            experiences = self.memory.sample(self.batch_size)
+            assert len(experiences) == self.batch_size
+
+            # Start by extracting the necessary parameters (we use a vectorized implementation).
+            state0_batch = [] # current_state
+            reward_batch = [] # current_reward
+            action_batch = [] # current_action
+            terminal1_batch = []
+            state1_batch = [] # next_state
+            for e in experiences:
+                state0_batch.append(e.state0)
+                state1_batch.append(e.state1)
+                reward_batch.append(e.reward)
+                action_batch.append(e.action)
+                terminal1_batch.append(0. if e.terminal1 else 1.)
+
+            # Prepare and validate parameters.
+            # Change batch class from list to np.ndarray
+            state0_batch = self.process_state_batch(state0_batch)
+            state1_batch = self.process_state_batch(state1_batch)
+            terminal1_batch = np.array(terminal1_batch)
+            reward_batch = np.array(reward_batch)
+            action_batch = np.array(action_batch)
+            assert reward_batch.shape == (self.batch_size,)
+            assert terminal1_batch.shape == reward_batch.shape
+            assert action_batch.shape == (self.batch_size, self.nb_actions), (action_batch.shape, (self.batch_size, self.nb_actions))
+
+            # Update critic, if warm up is over.
+            if self.step > self.nb_steps_warmup_critic:
+                target_actions = self.target_actor.predict_on_batch(state1_batch)
+                assert target_actions.shape == (self.batch_size, self.nb_actions)
+                if len(self.critic.inputs) >= 3:
+                    state1_batch_with_action = state1_batch[:]
+                else:
+                    state1_batch_with_action = [state1_batch]
+                state1_batch_with_action.insert(self.critic_action_input_idx, target_actions)
+                target_q_values = self.target_critic.predict_on_batch(state1_batch_with_action).flatten()
+                assert target_q_values.shape == (self.batch_size,)
+
+                # Compute r_t + gamma * max_a Q(s_t+1, a) and update the target ys accordingly,
+                # but only for the affected output units (as given by action_batch).
+                discounted_reward_batch = self.gamma * target_q_values
+                discounted_reward_batch *= terminal1_batch
+                assert discounted_reward_batch.shape == reward_batch.shape
+                targets = (reward_batch + discounted_reward_batch).reshape(self.batch_size, 1)
+
+                # Perform a single batch update on the critic network.
+                if len(self.critic.inputs) >= 3:
+                    state0_batch_with_action = state0_batch[:]
+                else:
+                    state0_batch_with_action = [state0_batch]
+                state0_batch_with_action.insert(self.critic_action_input_idx, action_batch)
+                # state0_batch_with_action is input, targets is teacher
+                metrics = self.critic.train_on_batch(state0_batch_with_action, targets)
+                if self.processor is not None:
+                    metrics += self.processor.metrics
+
+            # Update actor, if warm up is over.
+            if self.step > self.nb_steps_warmup_actor:
+                # TODO: implement metrics for actor
+                if len(self.actor.inputs) >= 2: # state
+                    inputs = state0_batch[:]
+                else: #now we get len = 1
+                    inputs = [state0_batch]
+                if self.uses_learning_phase:
+                    inputs += [self.training]
+                self.inputs = inputs
+                action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
+                assert action_values.shape == (self.batch_size, self.nb_actions)
+                
+                current_gradient = self._get_current_gradient(inputs)
+                norm = gradient_evaluation(current_gradient)
+                self.gradient_log.append(norm)
+
+        if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
+            self.update_target_models_hard()
+        
+        return metrics
+
+    def _get_current_gradient(self, state0_batch):
+        # function input
+        input_tensors = [self.combined_inputs[1]]
+        gradient_tensors = self.gradients
+
+        # tensorflow running function
+        gradient_cauculate_function = K.function(input_tensors, gradient_tensors)
+
+        # value
+        gradient_values = gradient_cauculate_function(state0_batch)
+        return gradient_values
 
 def _get_updates_original(params, loss, lr):
     optimizer = optimizers.Adam(lr=lr, clipnorm = 1.)
     updates = optimizer.get_updates(loss=loss, params=params)
     return updates
 
+def gradient_evaluation(gradient_values):
+    g_array = []
+    for g in gradient_values:
+        if len(g.shape) == 1:
+            g = np.array([g])
+        for val in g.flatten().flatten():
+            g_array.append(val)
+
+    g_array = np.abs(g_array)
+    gradient_eval = np.linalg.norm(g_array)
+
+    return gradient_eval
 
 
 class sampleDDPGAgent(sample_Agent):
