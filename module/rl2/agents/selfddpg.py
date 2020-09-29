@@ -501,8 +501,7 @@ class selfDDPGAgent2(selfDDPGAgent):
                 tau_tw.append(tw[i])
         return action_tw, tau_tw
         
-    # in progress
-    def backward2(self, reward, terminal=False):
+    def backward(self, reward, terminal=False):
         # Store most recent experience in memory.
         if self.step % self.memory_interval == 0:
             self.memory.append(self.recent_observation, self.recent_action, reward, terminal,
