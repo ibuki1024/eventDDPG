@@ -459,6 +459,7 @@ class selfDDPGAgent2(selfDDPGAgent):
         self.combined_inputs = combined_inputs
         self.loss_func = -K.mean(combined_output)
         self.gradients = dummy_optimizer.get_gradients(-K.mean(combined_output), self.actor.trainable_weights)
+        self.gradient_cauculate_function = self._gradient_cauculate_function()
 
         # action_params_update と tau_params_updateで分ける
         action_tw, tau_tw = self._split_params()
@@ -597,13 +598,17 @@ class selfDDPGAgent2(selfDDPGAgent):
         
         return metrics
 
-    def _get_current_gradient(self, state0_batch):
+    def _gradient_cauculate_function(self):
         # function input
         input_tensors = [self.combined_inputs[1]]
         gradient_tensors = self.gradients
 
         # tensorflow running function
         gradient_cauculate_function = K.function(input_tensors, gradient_tensors)
+        return gradient_cauculate_function
+
+    def _get_current_gradient(self, state0_batch):
+        gradient_cauculate_function = self.gradient_cauculate_function
 
         # value
         gradient_values = gradient_cauculate_function(state0_batch)
@@ -615,16 +620,15 @@ def _get_updates_original(params, loss, lr):
     return updates
 
 def gradient_evaluation(gradient_values):
-    g_array = []
-    for g in gradient_values:
-        if len(g.shape) == 1:
-            g = np.array([g])
-        for val in g.flatten().flatten():
-            g_array.append(val)
-
-    g_array = np.abs(g_array)
+    if len(gradient_values[0].shape) == 2:
+        g_array = gradient_values[0].flatten()
+    else:
+        g_array = gradient_values[0]
+    for g in gradient_values[1:]:
+        if len(g.shape) == 2:
+            g = g.flatten()
+        g_array = np.hstack((g_array, g))
     gradient_eval = np.linalg.norm(g_array)
-
     return gradient_eval
 
 
