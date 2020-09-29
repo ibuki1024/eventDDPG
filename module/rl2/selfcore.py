@@ -237,6 +237,7 @@ class Agent(object):
 
                 # to save laerning time, we stop testing if theta_dot is exploded
                 if abs(env.state[1]) > 10:
+                    episode_reward -= 10000.
                     done = True
                     explosion = True
 

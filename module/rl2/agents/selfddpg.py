@@ -12,6 +12,9 @@ from rl2.random import OrnsteinUhlenbeckProcess
 from rl2.util import *
 
 
+import copy
+
+
 def mean_q(y_true, y_pred):
     return K.mean(K.max(y_pred, axis=-1))
 
@@ -166,15 +169,19 @@ class selfDDPGAgent(Agent):
         combined_inputs[self.critic_action_input_idx] = self.actor(state_inputs)
 
         combined_output = self.critic(combined_inputs)
+        self.combined_output, self.state_inputs = combined_output, state_inputs
 
         updates = actor_optimizer.get_updates(
             params=self.actor.trainable_weights, loss=-K.mean(combined_output))
+        # loss = -K.mean()になっているのは, policy_gradientを平均値で近似するため
         if self.target_model_update < 1.:
             # Include soft target model updates.
             updates += get_soft_target_model_updates(self.target_actor, self.actor, self.target_model_update)
         updates += self.actor.updates  # include other updates of the actor, e.g. for BN
 
         # Finally, combine it all into a callable function.
+        self.actor_updates = updates
+        self.state_inputs = state_inputs
         if K.backend() == 'tensorflow':
             self.actor_train_fn = K.function(state_inputs + [K.learning_phase()],
                                              [self.actor(state_inputs)], updates=updates)
@@ -353,6 +360,7 @@ class selfDDPGAgent(Agent):
                     inputs = [state0_batch]
                 if self.uses_learning_phase:
                     inputs += [self.training]
+                self.inputs = inputs
                 action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
                 assert action_values.shape == (self.batch_size, self.nb_actions)
 
@@ -361,7 +369,7 @@ class selfDDPGAgent(Agent):
         
         return metrics
     
-    # ibuki made function
+    # ibuki made function for tau(s) plotting
     def save_agents_log(self):
         tmp = _all_weights(self.actor.layers)
         self.agents_log = push_out(self.agents_log, tmp)
@@ -373,6 +381,121 @@ class selfDDPGAgent(Agent):
 
     # TODO: tau and inputsignal logic
     # implement combine_tau_input(self, tau_NN, input_NN)
+
+
+class selfDDPGAgent2(selfDDPGAgent):
+    def __init__(self, nb_actions, actor, critic, critic_action_input, memory,
+                 gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
+                 train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
+                 random_process=None, custom_model_objects={}, target_model_update=.001, **kwargs):
+        super().__init__(nb_actions=nb_actions, actor=actor, critic=critic,
+                 critic_action_input=critic_action_input, memory=memory,
+                 gamma=gamma, batch_size=batch_size, nb_steps_warmup_critic=nb_steps_warmup_critic,
+                 nb_steps_warmup_actor=nb_steps_warmup_actor,
+                 train_interval=train_interval, memory_interval=memory_interval, delta_range=delta_range,
+                 delta_clip=delta_clip,
+                 random_process=random_process, custom_model_objects=custom_model_objects,
+                 target_model_update=target_model_update)
+        
+    def compile(self, optimizer, metrics=[], action_lr=0.001, tau_lr=0.00001):
+        metrics += [mean_q]
+
+        if type(optimizer) in (list, tuple):
+            if len(optimizer) != 2:
+                raise ValueError('More than two optimizers provided. Please only provide a maximum of two optimizers, the first one for the actor and the second one for the critic.')
+            actor_optimizer, critic_optimizer = optimizer
+        else:
+            actor_optimizer = optimizer
+            critic_optimizer = clone_optimizer(optimizer)
+        if type(actor_optimizer) is str:
+            actor_optimizer = optimizers.get(actor_optimizer)
+        if type(critic_optimizer) is str:
+            critic_optimizer = optimizers.get(critic_optimizer)
+        assert actor_optimizer != critic_optimizer
+
+        if len(metrics) == 2 and hasattr(metrics[0], '__len__') and hasattr(metrics[1], '__len__'):
+            actor_metrics, critic_metrics = metrics
+        else:
+            actor_metrics = critic_metrics = metrics
+
+        def clipped_error(y_true, y_pred):
+            return K.mean(huber_loss(y_true, y_pred, self.delta_clip), axis=-1)
+
+        # Compile target networks. We only use them in feed-forward mode, hence we can pass any
+        # optimizer and loss since we never use it anyway.
+        self.target_actor = clone_model(self.actor, self.custom_model_objects)
+        self.target_actor.compile(optimizer='sgd', loss='mse')
+        self.target_critic = clone_model(self.critic, self.custom_model_objects)
+        self.target_critic.compile(optimizer='sgd', loss='mse')
+
+        # We also compile the actor. We never optimize the actor using Keras but instead compute
+        # the policy gradient ourselves. However, we need the actor in feed-forward mode, hence
+        # we also compile it with any optimzer and never use it.
+        self.actor.compile(optimizer='sgd', loss='mse')
+
+        # Compile the critic.
+        if self.target_model_update < 1.:
+            # We use the `AdditionalUpdatesOptimizer` to efficiently soft-update the target model.
+            critic_updates = get_soft_target_model_updates(self.target_critic, self.critic, self.target_model_update)
+            critic_optimizer = AdditionalUpdatesOptimizer(critic_optimizer, critic_updates)
+        self.critic.compile(optimizer=critic_optimizer, loss=clipped_error, metrics=critic_metrics)
+
+        # Combine actor and critic so that we can get the policy gradient.
+        # Assuming critic's state inputs are the same as actor's.
+        combined_inputs = []
+        state_inputs = []
+        for i in self.critic.input:
+            if i == self.critic_action_input:
+                combined_inputs.append([])
+            else:
+                combined_inputs.append(i)
+                state_inputs.append(i)
+        combined_inputs[self.critic_action_input_idx] = self.actor(state_inputs)
+        combined_output = self.critic(combined_inputs)
+
+        # action_params_update と tau_params_updateで分ける
+        action_tw, tau_tw = self._split_params()
+        # action params update
+        action_updates = _get_updates_original(action_tw, -K.mean(combined_output), action_lr)
+        # tau params update
+        tau_updates = _get_updates_original(tau_tw, -K.mean(combined_output), tau_lr)
+
+        updates = action_updates + tau_updates
+        if self.target_model_update < 1.:
+            # Include soft target model updates.
+            updates += get_soft_target_model_updates(self.target_actor, self.actor, self.target_model_update)
+        updates += self.actor.updates  # include other updates of the actor, e.g. for Batch Normalization
+
+        # Finally, combine it all into a callable function.
+        self.actor_updates = updates
+        self.state_inputs = state_inputs
+        if K.backend() == 'tensorflow':
+            self.actor_train_fn = K.function(state_inputs + [K.learning_phase()],
+                                             [self.actor(state_inputs)], updates=updates)
+        else:
+            if self.uses_learning_phase:
+                state_inputs += [K.learning_phase()]
+            self.actor_train_fn = K.function(state_inputs, [self.actor(state_inputs)], updates=updates)
+        self.actor_optimizer = actor_optimizer
+
+        self.compiled = True
+
+    def _split_params(self):
+        tw = self.actor.trainable_weights
+        action_tw = []
+        tau_tw = []
+        for i in range(len(tw)):
+            if i % 4 < 2:
+                action_tw.append(tw[i])
+            else:
+                tau_tw.append(tw[i])
+        return action_tw, tau_tw
+
+def _get_updates_original(params, loss, lr):
+    optimizer = optimizers.Adam(lr=lr, clipnorm = 1.)
+    updates = optimizer.get_updates(loss=loss, params=params)
+    return updates
+
 
 
 class sampleDDPGAgent(sample_Agent):
@@ -679,7 +802,8 @@ class sampleDDPGAgent(sample_Agent):
                     inputs = [state0_batch]
                 if self.uses_learning_phase:
                     inputs += [self.training]
-                action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
+                action_values = self.actor_train_fn(inputs)[0] # update actor here with critics loss
+                # where is policy gradient?
                 assert action_values.shape == (self.batch_size, self.nb_actions)
             actor_outputlayer_diff = tmp - self.actor.layers[4].get_weights()[0]
             diff_mean = np.mean(np.abs(actor_outputlayer_diff), axis=0)

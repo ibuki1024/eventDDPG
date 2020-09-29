@@ -2703,6 +2703,7 @@ class Function(object):
 
     def __call__(self, inputs):
         if hasattr(get_session(), '_make_callable_from_options'):
+            # こっち
             if py_any(is_sparse(x) for x in self.inputs):
                 if py_any(is_tensor(x) for x in inputs):
                     raise ValueError(
@@ -2720,6 +2721,7 @@ class Function(object):
                         '`run_metadata`, you need tensorflow 1.10 or higher.')
                 return self._legacy_call(inputs)
 
+            # のここ
             return self._call(inputs)
         else:
             if py_any(is_tensor(x) for x in inputs):
