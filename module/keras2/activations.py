@@ -207,6 +207,10 @@ def multiple_tanh(x, ratio=10.):
     return ratio * K.tanh(x)
 
 
+def tau_output(x, minimum=0.001):
+    return 0.099 * K.sigmoid(x) + K.constant(minimum)
+
+
 def self_trigger_output(tensor, minimum=0.001):
     """multiple_tanh and sigmoid.
 
@@ -229,30 +233,6 @@ def self_trigger_output(tensor, minimum=0.001):
     out = K.add(K.multiply(input_signal, first_tensor), K.multiply(tau, second_tensor))
 
     return out
-
-def sample_value_test(tensor, minimum=0.001):
-    """multiple_tanh and sigmoid.
-
-    This activation function is expected to be used in output layer.
-    """
-    dtype = tensor.dtype
-    shape = (tensor.shape[1],)
-    first_array = np.zeros(shape)
-    first_array[0] = 1 # [1,0,0,....]
-    second_array = np.ones(shape)
-    second_array[0] = 0 # [0,1,1,...]
-
-    first_tensor = K.constant(first_array)
-    first_tensor = K.cast(first_tensor, dtype)
-    second_tensor = K.constant(second_array)
-    second_tensor = K.cast(second_tensor, dtype)
-
-    input_signal = multiple_tanh(tensor)
-    tau = K.sigmoid(tensor) + K.constant(minimum)
-    out = K.add(K.multiply(input_signal, first_tensor), K.multiply(tau, second_tensor))
-
-    return out
-
 
 def tanh(x):
     """Hyperbolic tangent activation function.
