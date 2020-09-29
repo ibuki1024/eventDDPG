@@ -451,18 +451,21 @@ class selfDDPGAgent2(selfDDPGAgent):
                 combined_inputs.append(i)
                 state_inputs.append(i)
         combined_inputs[self.critic_action_input_idx] = self.actor(state_inputs)
-        combined_output = self.critic(combined_inputs)
+        combined_output = self.critic(combined_inputs) # Q(s,a|θ^Q)を示してる
 
         # action_params_update と tau_params_updateで分ける
         action_tw, tau_tw = self._split_params()
         # action params update
+        # ∂Q/∂a
         action_updates = _get_updates_original(action_tw, -K.mean(combined_output), action_lr)
         # tau params update
+        # ∂Q/∂τ
         tau_updates = _get_updates_original(tau_tw, -K.mean(combined_output), tau_lr)
 
         updates = action_updates + tau_updates
         if self.target_model_update < 1.:
             # Include soft target model updates.
+            # target network update operations
             updates += get_soft_target_model_updates(self.target_actor, self.actor, self.target_model_update)
         updates += self.actor.updates  # include other updates of the actor, e.g. for Batch Normalization
 
