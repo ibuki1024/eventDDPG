@@ -73,7 +73,7 @@
 \subsection{目標点の確認}
 研究を通しての目標は「安全性を確保しながら, 最適セルフトリガー制御則$\pi^{*}$の強化学習を実現させること」である。ここで
 \begin{align}
-	\pi^{*} &= \argmax_{\pi}J(\pi) \\
+	\pi^{*} &= \argmax_{\pi}J(\pi) \label{optimal_policy}\\
 	J(\pi) &= \expect_{s_0\in d_0}[V^{\pi}(s_0)] \\
 	% V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i\{-s_i^{\top}Qs_i-\pi_1(s_i)^{\top}R\pi_1(s_i)+\lambda \pi_2(s_i)\} \\
 	V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i C^{\pi}_i \label{value} \\
@@ -199,89 +199,62 @@ ECBFを用いることによって, 入力$a$に対するインタラクショ�
 1. について,rewardの改善が見られないのはエピソード数が少ないためであることは予想がつくが, ~$\pi_{\textrm{init}}$は$\tau=0.001$において, 原点付近で線形化したシステムを安定化する方策であるため, rewardが減っていくことは腑に落ちない.\\
 3. については, rewardをみると$\tau=0.1$を維持している学習とそうでない学習で, $\tau=0.1$の間の制御性能に差がある点ことがわかり, これが理由だと考える. ただし, $\lambda=50$の学習での逆行は理由がわからない.\par
 
-\subsection{学習した方策による制御性能}
-図\ref{reward_log}の2行3列目が表す学習によって得られた方策$\pi_a$の制御を詳しくみてみる. \par
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=14cm]{control_log.png}
- 	\caption{$\pi_a$による制御ログ} \label{control_log}
-\end{figure}
-図\ref{control_log}を見ると, おおよそ振り子を倒立させ続けられていることがわかる.しかし注目したいのは$\tau$の変化である.本来セルフトリガー制御は状態$s$によって様々な値をとるはずであるが, 
-ほぼ一定値となってしまっている. このことから「倒立時は長くインターバルを空け, 倒れ出した時に多くインタラクションを行う」というほども高度なことを学習できていない. また, これは果たしてリーズナブルな結果なのかも今後明らかにして行きたい.
-
-\section{$\tau(s)$の学習の様子}
-前節で, エピソード(10秒間の制御)毎にその間の$\tau(s)$の平均値を追うと,~0.001から0.1に急激に変化していることを確認した.また, ~5.3節では, 200000ステップの学習によって得られた方策によって決定される$\tau(s)$がインターバルの間ずっと0.1となっていることも確認した. \par
-そこで, 本節では$\tau(s)$を正しく$s$依存の関数として扱っていて, 学習の結果このように「張り付く」ような結果になっているのか否かを確認する. 
-
-\subsection{検証方法}
-方策関数$\pi_{\theta}(s)$のパラメータ$\theta$は1ステップ(1インタラクション)ごとに行われる. したがってその1要素である$\tau(s)$という関数も1ステップごとに更新される. ここでは学習途中のとある100ステップ分の$\tau(s)$を取り出し, それぞれの$s$に対する$\tau(s)$の変化を確認する.~(ただしプロットのための引数として用いる$s$は,~$\theta\in [-\pi, \pi], \dot{\theta}\in [-8,8]$の範囲からランダムに500個選ぶ.) 
-
-
-\subsection{$\tau(s)$の変化}
-まず初めに$\pi_{\textrm{init}}$による$\tau(s)$をみてみる.
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=10cm]{tau_dependency_of_initial_policy.png}
- 	\caption{$\pi_{\textrm{init}}$の$\tau(s)$} \label{initial_tau}
-\end{figure}\\
-図\ref{initial_tau}は, 全状態で$\tau(s)=0.001$となっており, 式\eqref{pi_init}の通りである.\par
-\newpage
-では次に5.3節で確認した方策$\pi_a$による$\tau(s)$をみてみる.
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=10cm]{tau_dependency_of_last_policy.png}
- 	\caption{$\pi_a$の$\tau(s)$} \label{last_policy_tau}
-\end{figure}\\
-図\ref{last_policy_tau}をみると, ほとんど全ての状態で$\pi_a(s)=0.1$となっていることがわかる.\par
-\newpage
-では, これらの途中にはどのような変化があったのかを確認する. 
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=12cm]{tau_dependency_of_state.png}
- 	\caption{学習が進むにつれてどのように$\tau(s)$が変わるのか} \label{on_the_way}
-\end{figure}\\
-図\ref{on_the_way}は6.1節で述べた, 学習中のとある100ステップ分の関数$\tau(s)$のうち, 等間隔に10個選んだものをプロットしたものである. 図の同じ色の点は同じ関数$\tau(s)$による出力を表す.図\ref{on_the_way}をみると, 少しづつ$\tau(s)=0.1$となる領域が大きくなっていることがわかる. \par
-
-\if0
-\subsection{$\tau(s)$が変化する領域}
-前節での結果から,~$\tau(s)$はきちんと$s$の関数として学習(しようと)していることがわかった. では図\ref{on_the_way}で$\tau(s)=0.1$となるのはどのような領域なのか. それを確認するために, 学習途中にエージェントが経験した状態$s$のログを録ってみた. 経験状態集合と$\tau(s)=0.1$となる領域が関係するのか, 図\ref{state_log_and_tau2}をみる.
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=9cm]{state_log_and_tau2.png}
- 	\caption{経験した$s$と$\tau(s)$}  \label{state_log_and_tau2}
-\end{figure}\\
-図\ref{state_log_and_tau2}でオレンジ色で表しているのは, エージェントが実際に経験した状態変数のパスである(3次元空間で比較しやすいように`tau`座標を与えた).これをみると, 経験した状態$s$の領域が$\tau(s)=0.1$となる領域を大きく左右している特徴付けていそうである. しかしながら, また他の学習ログを確認すると
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=9cm]{state_log_and_tau3.png}
- 	\caption{経験した$s$と$\tau(s)$}  \label{state_log_and_tau3}
-\end{figure}\\
-図\ref{state_log_and_tau3}のようになり, 経験状態集合と$\tau(s)$が変化した領域の関係性が分かりにくい.
-\fi
-
-\subsection{$\tau(s)$の学習過程のまとめ}
-ここまでみてきたように, $\tau(s)$は$s$依存の関数として学習しているにもかかわらず全状態で$0.1$を出力する関数と$0.001$を出力する関数とを往復しているようである. (図\ref{tau_fall}は逆に一度全状態で$0.1$を出力する関数になった後, 再び0.001に戻っていく様子である.)
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=11cm]{tau_fall.png}
- 	\caption{$\tau(s)$の変化}  \label{tau_fall}
-\end{figure}\par
-\newpage
-本研究の目的は, 「状態$s$によって最適な$\tau$を出力するような方策の学習」である. したがって現状得られているような$\tau(s)$では目的を果たせているとは言えない(原点を最大値に持つ凸関数たるべきである).この課題が生じている原因として, パラメータ更新に用いる勾配法の学習率が大きすぎるというものが考えられる.\par
-しかしながら$\tau(s)$は図\ref{actor_NN}のように$\pi_{\theta}(s)$を表現するニューラルネットワークの出力の1つとして与えているので, $\tau(s)$の学習率のみを小さくすることはできない(入力信号$a(s)$の学習も遅くなってしまう).
+\section{学習した方策による制御性能}
+図\ref{average_tau},図\ref{reward_log}を見ると, 勾配法が収束してるとは結論づけられない.この課題が生じている原因として, パラメータ更新に用いる勾配法の学習率が大きすぎるというものが考えられる.\par
+しかしながら$\tau(s)$は図\ref{actor_NN}のように$\pi(s)$を表現するニューラルネットワークの出力の1つとして与えているので, $\tau(s)$の学習率のみを小さくすることはできない(入力信号$a(s)$の学習も遅くなってしまう).
 \begin{figure}[h]
 	\centering
  	\includegraphics[width=10cm]{actor_NN.png}
  	\caption{方策$\pi_{\theta}(s)$}  \label{actor_NN}
 \end{figure}\\
-そこで図\ref{split_NN}のようにニューラルネットワークを分離して, $a(s)と\tau(s)$をそれぞれ別のニューラルネットワークで表現してみようと考えている.
+そこで図\ref{split_NN}のようにニューラルネットワークを分離して, $a(s)と\tau(s)$をそれぞれ別のニューラルネットワークで表現する.
 \begin{figure}[h]
 	\centering
  	\includegraphics[width=10cm]{split_NN.png}
  	\caption{方策$\pi_{\theta}(s)$の分離}  \label{split_NN}
 \end{figure}\\
 こうすることで,入力信号$a(s)$とインタラクション間隔$\tau(s)$の学習率を別々にすることができる.\par
-ただし, このように「張り付く」関数になってしまうのは学習率以外の原因が大きい気がするので究明したい(試行錯誤の回数が少なすぎる(?)). また, 研究の効率化の点からもバリア関数のロジックの組み込みについても真剣に取り組み始めたい.
+
+\subsection{学習率}
+さて, 少し話題が変わるが使用しているDDPGというアルゴリズムでは, actor,criticと二つのNNを用いる. そのうち方策$\pi(s)$はactorのNNによって表される. actorは方策勾配$\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}})$によって以下のように更新される.
+\begin{equation}
+	\theta_{\mu} \gets \theta_{\mu}+ \alpha l_{\textrm{algo}}\circ\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}}) \label{policy_update}
+\end{equation}
+ただし, $\alpha$は固定パラメータで$l_{\textrm{algo}}$は最適化アルゴリズムによってミニバッチに適応して算出されるベクトルであり,~$\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}})$にエレメントワイズにかかる. ここでいう最適化アルゴリズムとはSGD, adamなどである. 前節で自由に設定できるとした学習率とは$\alpha$のことであるため, 前節のNN分離は$\tau(s)$の学習率を押さえ込んでいるとは言えない. (adamによって算出される$l_{\textrm{algo}}$については次週調べたい.)また, $\theta_{\mu}$はactorのパラメータを表す.\par
+actorのNNを分離したことにより, 式\eqref{policy_update}を
+\begin{align}
+\theta_{\mu} = \begin{bmatrix}\theta_a \\ \theta_{\tau}\end{bmatrix}, 
+\begin{cases}
+	\theta_a \gets \theta_a+ \alpha_a l_{\textrm{algo},a}\circ\nabla_{\theta_a}J(\pi_{\theta^{\mu}})|_{\theta_{\tau}} \\
+	\theta_{\tau} \gets \theta_{\tau}+ \alpha_{\tau} l_{\textrm{algo},\tau}\circ\nabla_{\theta_{\tau}}J(\pi_{\theta^{\tau}})|_{\theta_a}
+\end{cases}
+\end{align}
+のように分離することができる.
+
+\subsection{学習進捗の確認}
+図\ref{reward_log}のように, 1エピソード(10sの制御)の間の報酬を計算したのでは式\eqref{optimal_policy}に対する学習の進捗ができているかは真に確認することができない. そこでDDPGが方策勾配を用いた手法であることから, 学習の進捗を方策勾配のノルムの変化によって確認する(勾配法が収束しているならノルムが0になるはずである).図\ref{gradient_log}に$\alpha_{a}=0.001, \alpha_{\tau}=0.0001$として最適化アルゴリズムにadamを用いた学習の様子を示す.
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=15cm]{gradient_log.png}
+ 	\caption{学習中の$\|\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}})\|_{L_2}$の変化}  \label{gradient_log}
+\end{figure}\\
+図\ref{gradient_log}はパラメータの更新に用いるための方策勾配$\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}})$のL2ノルムの変化をプロットしている. オレンジ線は1000ステップの移動平均線である.図\ref{gradient_log}を見ると方策勾配が収束しているとは結論づけにくい.
+\par
+比較対象として, セルフトリガーやイベントトリガーなどが一切関係ない「プレーンな」倒立振子の「振り上げ」の強化学習における方策勾配もみてみた.
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=16cm]{gradient_log_plain.png}
+ 	\caption{比較: プレーンな倒立振子の学習}  \label{gradient_log_plain}
+\end{figure}\\
+この学習はまだ決して収束しているとは言えないが, 移動平均線を見ると概ね単調減少していることから, 着実に学習が進んでいると考えられる. 
+
+\subsection{考察}
+前節で, セルフトリガー強化学習の方策勾配のL2ノルムが収束できていない様子を確認した. この原因について考察する.\par
+DDPGがそのアルゴリズムの根底として用いているのは以下の方策勾配定理である.
+\begin{equation}
+	\nabla_{\theta}J(\pi_{\theta}) = \expect_{\pi_{\theta}}[\nabla_{\theta}\log\pi_{\theta}(s)Q^{\pi}(s,a)]
+\end{equation}
+しかしながら, DDPGでは$Q^{\pi}(s,a)$をcriticのNNが関数近似しているため, 計算している方策勾配は近似方策勾配となり, イメージ通りの勾配のノルムの単調減少が見られていないのではないかと考える. 逆に言えば, 勾配法が正しく進んでいない理由が$\tau$の学習率以前に, criticの学習がまだ不十分であることが原因だとわかったので, より多くの学習時間が必要であると考えられる.(やります)
 
 
 \begin{thebibliography}{10}

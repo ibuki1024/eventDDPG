@@ -7,12 +7,9 @@ import numpy as np
 import keras2.backend as K
 import keras2.optimizers as optimizers
 
-from ..selfcore import Agent, sample_Agent
+from ..selfcore import self_Agent, sample_Agent
 from rl2.random import OrnsteinUhlenbeckProcess
 from rl2.util import *
-
-
-import copy
 
 
 def mean_q(y_true, y_pred):
@@ -35,7 +32,7 @@ def push_out(arr, insert_object):
 # Deep DPG as described by Lillicrap et al. (2015)
 # http://arxiv.org/pdf/1509.02971v2.pdf
 # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.646.4324&rep=rep1&type=pdf
-class selfDDPGAgent(Agent):
+class selfDDPGAgent(self_Agent):
     """Write me
     """
     def __init__(self, nb_actions, actor, critic, critic_action_input, memory, input_clipper=10.,

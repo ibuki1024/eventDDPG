@@ -94,7 +94,7 @@ class Optimizer(object):
                              'Common ops without gradient: '
                              'K.argmax, K.round, K.eval.')
         if hasattr(self, 'clipnorm') and self.clipnorm > 0:
-            norm = K.sqrt(sum([K.sum(K.square(g)) for g in grads]))
+            norm = K.sqrt(sum([K.sum(K.square(g)) for g in grads])) # matrix.flatten() の norm
             grads = [clip_norm(g, self.clipnorm, norm) for g in grads]
         if hasattr(self, 'clipvalue') and self.clipvalue > 0:
             grads = [K.clip(g, -self.clipvalue, self.clipvalue) for g in grads]

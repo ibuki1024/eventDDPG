@@ -1,4 +1,4 @@
-This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  24 SEP 2020 19:37
+This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  30 SEP 2020 21:29
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -396,50 +396,40 @@ File: reward_log.png Graphic file (type bmp)
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 [5]
-File: control_log.png Graphic file (type bmp)
-<control_log.png>
+File: actor_NN.png Graphic file (type bmp)
+<actor_NN.png>
+File: split_NN.png Graphic file (type bmp)
+<split_NN.png>
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 [6]
-File: tau_dependency_of_initial_policy.png Graphic file (type bmp)
-<tau_dependency_of_initial_policy.png>
-LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 5.76599pt on input line 225.
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[7]
-File: tau_dependency_of_last_policy.png Graphic file (type bmp)
-<tau_dependency_of_last_policy.png>
+File: gradient_log.png Graphic file (type bmp)
+<gradient_log.png>
+ [7]
+File: gradient_log_plain.png Graphic file (type bmp)
+<gradient_log_plain.png>
  [8]
-File: tau_dependency_of_state.png Graphic file (type bmp)
-<tau_dependency_of_state.png>
-File: tau_fall.png Graphic file (type bmp)
-<tau_fall.png>
- [9]
-File: actor_NN.png Graphic file (type bmp)
-<actor_NN.png>
-File: split_NN.png Graphic file (type bmp)
-<split_NN.png>
 LaTeX Font Info:    Font shape `JT1/mc/m/it' in size <10> not available
-(Font)              Font shape `JT1/mc/m/n' tried instead on input line 289.
+(Font)              Font shape `JT1/mc/m/n' tried instead on input line 262.
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 289.
+(Font)              scaled to size 9.60999pt on input line 262.
 LaTeX Font Info:    Font shape `JY1/mc/m/it' in size <10> not available
-(Font)              Font shape `JY1/mc/m/n' tried instead on input line 289.
+(Font)              Font shape `JY1/mc/m/n' tried instead on input line 262.
 LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 289.
- [10] (./draft.aux) ) 
+(Font)              scaled to size 9.60999pt on input line 262.
+ [9] (./draft.aux) ) 
 Here is how much of TeX's memory you used:
- 2835 strings out of 493281
- 36682 string characters out of 6145042
- 119526 words of memory out of 5000000
- 6670 multiletter control sequences out of 15000+600000
- 29499 words of font info for 127 fonts, out of 8000000 for 9000
+ 2813 strings out of 493281
+ 36092 string characters out of 6145042
+ 119515 words of memory out of 5000000
+ 6654 multiletter control sequences out of 15000+600000
+ 27143 words of font info for 118 fonts, out of 8000000 for 9000
  934 hyphenation exceptions out of 8191
- 27i,16n,25p,618b,401s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 27i,17n,25p,618b,374s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on draft.dvi (10 pages, 34468 bytes).
+Output written on draft.dvi (9 pages, 33664 bytes).

@@ -15,7 +15,7 @@ from rl2.callbacks import (
     Visualizer
 )
 
-class Agent(object):
+class self_Agent(object):
     """Abstract base class for all implemented agents.
 
     Each agent interacts with the environment (as defined by the `Env` class) by first observing the
