@@ -90,6 +90,7 @@ class self_Agent(object):
         self.training = True
 
         self.watched_states = []
+        self.critic_loss_log = []
         
         # original parameters
         accumulated_time = 0
@@ -228,6 +229,7 @@ class self_Agent(object):
                     # Force a terminal state.
                     done = True
                 metrics = self.backward(reward, terminal=done)
+                self.critic_loss_log.append(metrics[0])
                 episode_reward += reward
                 self.watched_states.append(env.state)
 
