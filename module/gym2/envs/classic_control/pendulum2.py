@@ -72,6 +72,9 @@ class PendulumEnv2(gym2.Env):
         self.last_u = None
         return self._get_obs()
 
+    def set_state(self, x):
+        self.state = x
+
     def _get_obs(self):
         theta, thetadot = self.state
         # return np.array([np.cos(theta), np.sin(theta), thetadot])

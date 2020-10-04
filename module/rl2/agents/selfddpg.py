@@ -228,19 +228,22 @@ class selfDDPGAgent(self_Agent):
             return batch
         return self.processor.process_state_batch(batch)
 
-    def add_noise(self, action):
-        a, tau = action
-        a_noise = np.random.randn() / 2.
-        tau_noise = np.random.randn() * 1e-2
-        a = np.clip(a + a_noise, -self.input_clipper, self.input_clipper)
-        tau = np.clip(tau + tau_noise, 0.001, 0.1)
-        return np.array([a, tau])
+    def _add_original_noise(self, actor_output):
+        # Greedy in the limit noise
+        # ac, bc = 3.6e-5, 0.2
+        # coef = 1 / (ac*(self.step+1)+bc) #avoid x/0
+
+        coef = 1
+        action, tau = actor_output
+        action = np.clip(action + np.random.randn() * coef, -self.input_clipper, self.input_clipper)
+        tau = np.clip(tau + np.random.normal(0., 0.01) * coef, 0.001, 0.1)
+        return np.array([action, tau])
 
     def select_action(self, state):
         batch = self.process_state_batch([state])
         action = self.actor.predict_on_batch(batch).flatten()
         if self.training and self.original_noise:
-            action = self.add_noise(action)
+            action = self._add_original_noise(action)
 
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
@@ -376,22 +379,24 @@ class selfDDPGAgent(self_Agent):
         for i, layer in enumerate(weights):
             self.actor.layers[i].set_weights(layer)
 
-    # TODO: tau and inputsignal logic
-    # implement combine_tau_input(self, tau_NN, input_NN)
+
+
 
 
 class selfDDPGAgent2(selfDDPGAgent):
     def __init__(self, nb_actions, actor, critic, critic_action_input, memory,
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
-                 random_process=None, custom_model_objects={}, target_model_update=.001, **kwargs):
+                 random_process=None, original_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
         super().__init__(nb_actions=nb_actions, actor=actor, critic=critic,
                  critic_action_input=critic_action_input, memory=memory,
                  gamma=gamma, batch_size=batch_size, nb_steps_warmup_critic=nb_steps_warmup_critic,
                  nb_steps_warmup_actor=nb_steps_warmup_actor,
                  train_interval=train_interval, memory_interval=memory_interval, delta_range=delta_range,
                  delta_clip=delta_clip,
-                 random_process=random_process, custom_model_objects=custom_model_objects,
+                 random_process=random_process,
+                 original_noise=original_noise,
+                 custom_model_objects=custom_model_objects,
                  target_model_update=target_model_update)
         self.gradient_log = []
         
