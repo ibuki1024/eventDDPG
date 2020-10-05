@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 10.1}}}
+\title{\large{\bf{進捗報告 10.5}}}
 \author{M2 竹内 維吹}
 \date{\today}
 \begin{document}
@@ -165,96 +165,25 @@ ECBFを用いることによって, 入力$a$に対するインタラクショ�
 ここまでの議論を整理すると, 「サンプル値系における安全性保証」とは「1. 入力信号の安全性,~2. サンプル間隔の安全性」を保証することになる. これらが行われることを回避する学習方法については今後検討する.
 
 
-\subsection{セルフトリガー制御の強化学習}
-2.4節で記した初期方策$\pi_{\rm{init}}$から, 安全性を保証しながら最適セルフトリガー制御則$\pi^{*}$の学習を試みる. サンプル値系とは異なり, インタラクション間隔はエージェントが決定する. したがって, 方策関数の出力$\pi(s) = \begin{bmatrix}a & \tau\end{bmatrix}$に対して,~$\tau>\tau_{\textrm{max}}(a)$となった時には入力信号$a$を変更する方法と, 通信間隔$\tau$を変更する方法の二種類の選択があり, どちらを行うべきか考える必要がある.
+\section{セルフトリガー制御の強化学習}
 
+\subsection{問題設定の再確認}
+式\eqref{pi_init}で表される方策を初期方策として, 式\eqref{optimal_policy}で表される最適方策を学習したい. その際CBFやECBFを用いて安全性を確保する. そのために以下のものがGivenであると仮定する.
+\begin{itemize}
+\item 初期方策$\pi_{\textrm{init}}$ %LQRじゃ良くなさそう
+\item 安全領域$\mathcal{C}$, システム\eqref{continuous} 指数制御バリア関数ECBF: $h(\mathcal{C})\geq0$
+\end{itemize}
 
-\section{(先行して) セルフトリガー制御の強化学習の実験}
-現状, ECBFについてまだ深い考察と実装を行っていないので, セルフトリガー制御の安全性の確保は行うことはできない.しかしながら$\pi_{\textrm{init}}$から$\pi^{*}$を強化学習するための環境は整っているため, 安全性については考慮せずに実験を行ってみた.\par
-実験環境はOpen-AI Gymのpendulumで, 初期状態が$\theta\sim N(0, 0.1), \dot{\theta}\sim U(-1,1)$となるような環境で行った. また, 10秒間の制御を1エピソードと定義する.\par
+\subsection{安全確保手法}
+学習中(データ収集中),~$\pi(s)=\begin{bmatrix}a & \tau\end{bmatrix}$と出力された場合を考える. ECBFを用いると, 状態$s$が安全領域$\mathcal{C}$を出ていかないための, 入力$a$を加え続けられる最大の時間$\tau_{\textrm{max}}(a)$を与えることができる. 次のインタラクションまでの時間間隔を$\min\{\tau, \tau_{\textrm{max}}(a)\}$とすることで, 安全性を確保する.
 
-\subsection{$\lambda$による学習過程の変化}
-式\eqref{reward}より, $\tau$を大きくするモチベーションは$\lambda$に大きく依存するため, それを様々な値にすることでど学習過程にどのような変化が見られるのかを確認してみた. ここでは,~$\lambda$を$0.05, 0.5, 5, 50$に設定し, それぞれ3回, 200000ステップ(インタラクションの回数)の強化学習を行った. また,~$\tau$は$0.001\sim0.1$の範囲に制限している.\par
-まずそれぞれの学習タスクの中で, 1エピソードの間の$\tau$の平均値の変化を見てみる.\par
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=14cm]{tau_exp_ave.png}
- 	\caption{学習を通しての$\tau$の変化} \label{average_tau}
-\end{figure}
-ここで注意したいのは, $\tau$によって200000回のインタラクションに含まれるエピソード数が異なる点である. 例えば$\tau$の学習が進まずにずっと$\tau=0.001$であった場合, 10秒間の制御の間には10000回のインタラクションが行われる. したがって200000回のインタラクションの間には20エピソードしか含まれない. 逆に, 初期から$\tau$の学習が進み$\tau=0.1$となることが増えてくると, エピソード数は増えてくる. 図\ref{average_tau}の$x$軸の範囲が異なるのはそのためである. \par
-次に, 制御性能(倒立振子の制御)の変化を見るためこの時のそれぞれのエピソード報酬の変化を見てみる. 
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=14cm]{reward_log.png}
- 	\caption{学習を通してのエピソード報酬の変化} \label{reward_log}
-\end{figure}\\
+\subsection{生じると予想される課題点}
+\subsubsection{$\mathcal{C}$内での経験の均一性}
+方策$\pi$の正しい改善にはcriticネットワークの出力である$Q^{\pi}$の近似精度が必要不可欠である. また, DDPGはoff-policyアルゴリズムであり, 過去のデータを保存したexperience replayから作成したミニバッチを用いてcriticの更新に用いるTD誤差の計算を行う. 安全強化学習においては, $\mathcal{C}$の縁での挙動が重要であるため, 作成するミニバッチには原点付近の$(s,a)$に偏らずに, 状態変数に対して満遍なく含まれることが望ましい. 現状はexperience replayから等確率でミニバッチを作成しているので, {$\mathcal{C}$の縁での経験が少なく, 原点付近ばかりを経験していると, $\mathcal{C}$の縁付近での$Q^{\pi}$は近似精度は高くないことが予想される. \par
+そこで, experience replayを原点付近の$s$と, $\mathcal{C}$の縁付近とで分けて, 均等にミニバッチを作成するのはどうかと考える. %その辺機械学習屋さんはどう考えてるのか
 
-\subsection{考察}
-図\ref{reward_log}の各ブロックが表す学習の記録は図\ref{average_tau}と対応している. これら2つの図を見比べてみるといくつかの点に気付く.
-\begin{enumerate}
-  \item $\lambda=0.1$を初期に学習できていないと, 最終的に得られる制御性能自体も悪化する.
-  \item $\lambda$が大きい方が$\tau$を大きくする方向に学習が進みやすい(当然)が, 毎回そうなる訳でもない点
-  \item $\lambda=0.1$を学習できていても, $\lambda=0.001$に逆戻りしてしまうことがある. 
-\end{enumerate}
-1. について,rewardの改善が見られないのはエピソード数が少ないためであることは予想がつくが, ~$\pi_{\textrm{init}}$は$\tau=0.001$において, 原点付近で線形化したシステムを安定化する方策であるため, rewardが減っていくことは腑に落ちない.\\
-3. については, rewardをみると$\tau=0.1$を維持している学習とそうでない学習で, $\tau=0.1$の間の制御性能に差がある点ことがわかり, これが理由だと考える. ただし, $\lambda=50$の学習での逆行は理由がわからない.\par
-
-\section{学習した方策による制御性能}
-図\ref{average_tau},図\ref{reward_log}を見ると, 勾配法が収束してるとは結論づけられない.この課題が生じている原因として, パラメータ更新に用いる勾配法の学習率が大きすぎるというものが考えられる.\par
-しかしながら$\tau(s)$は図\ref{actor_NN}のように$\pi(s)$を表現するニューラルネットワークの出力の1つとして与えているので, $\tau(s)$の学習率のみを小さくすることはできない(入力信号$a(s)$の学習も遅くなってしまう).
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=10cm]{actor_NN.png}
- 	\caption{方策$\pi_{\theta}(s)$}  \label{actor_NN}
-\end{figure}\\
-そこで図\ref{split_NN}のようにニューラルネットワークを分離して, $a(s)と\tau(s)$をそれぞれ別のニューラルネットワークで表現する.
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=10cm]{split_NN.png}
- 	\caption{方策$\pi_{\theta}(s)$の分離}  \label{split_NN}
-\end{figure}\\
-こうすることで,入力信号$a(s)$とインタラクション間隔$\tau(s)$の学習率を別々にすることができる.\par
-
-\subsection{学習率}
-さて, 少し話題が変わるが使用しているDDPGというアルゴリズムでは, actor,criticと二つのNNを用いる. そのうち方策$\pi(s)$はactorのNNによって表される. actorは方策勾配$\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}})$によって以下のように更新される.
-\begin{equation}
-	\theta_{\mu} \gets \theta_{\mu}+ \alpha l_{\textrm{algo}}\circ\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}}) \label{policy_update}
-\end{equation}
-ただし, $\alpha$は固定パラメータで$l_{\textrm{algo}}$は最適化アルゴリズムによってミニバッチに適応して算出されるベクトルであり,~$\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}})$にエレメントワイズにかかる. ここでいう最適化アルゴリズムとはSGD, adamなどである. 前節で自由に設定できるとした学習率とは$\alpha$のことであるため, 前節のNN分離は$\tau(s)$の学習率を押さえ込んでいるとは言えない. (adamによって算出される$l_{\textrm{algo}}$については次週調べたい.)また, $\theta_{\mu}$はactorのパラメータを表す.\par
-actorのNNを分離したことにより, 式\eqref{policy_update}を
-\begin{align}
-\theta_{\mu} = \begin{bmatrix}\theta_a \\ \theta_{\tau}\end{bmatrix}, 
-\begin{cases}
-	\theta_a \gets \theta_a+ \alpha_a l_{\textrm{algo},a}\circ\nabla_{\theta_a}J(\pi_{\theta^{\mu}})|_{\theta_{\tau}} \\
-	\theta_{\tau} \gets \theta_{\tau}+ \alpha_{\tau} l_{\textrm{algo},\tau}\circ\nabla_{\theta_{\tau}}J(\pi_{\theta^{\tau}})|_{\theta_a}
-\end{cases}
-\end{align}
-のように分離することができる.
-
-\subsection{学習進捗の確認}
-図\ref{reward_log}のように, 1エピソード(10sの制御)の間の報酬を計算したのでは式\eqref{optimal_policy}に対する学習の進捗ができているかは真に確認することができない. そこでDDPGが方策勾配を用いた手法であることから, 学習の進捗を方策勾配のノルムの変化によって確認する(勾配法が収束しているならノルムが0になるはずである).図\ref{gradient_log}に$\alpha_{a}=0.001, \alpha_{\tau}=0.0001$として最適化アルゴリズムにadamを用いた学習の様子を示す.
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=15cm]{gradient_log.png}
- 	\caption{学習中の$\|\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}})\|_{L_2}$の変化}  \label{gradient_log}
-\end{figure}\\
-図\ref{gradient_log}はパラメータの更新に用いるための方策勾配$\nabla_{\theta^{\mu}}J(\pi_{\theta^{\mu}})$のL2ノルムの変化をプロットしている. オレンジ線は1000ステップの移動平均線である.図\ref{gradient_log}を見ると方策勾配が収束しているとは結論づけにくい.
-\par
-比較対象として, セルフトリガーやイベントトリガーなどが一切関係ない「プレーンな」倒立振子の「振り上げ」の強化学習における方策勾配もみてみた.
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=16cm]{gradient_log_plain.png}
- 	\caption{比較: プレーンな倒立振子の学習}  \label{gradient_log_plain}
-\end{figure}\\
-この学習はまだ決して収束しているとは言えないが, 移動平均線を見ると概ね単調減少していることから, 着実に学習が進んでいると考えられる. 
-
-\subsection{考察}
-前節で, セルフトリガー強化学習の方策勾配のL2ノルムが収束できていない様子を確認した. この原因について考察する.\par
-DDPGがそのアルゴリズムの根底として用いているのは以下の方策勾配定理である.
-\begin{equation}
-	\nabla_{\theta}J(\pi_{\theta}) = \expect_{\pi_{\theta}}[\nabla_{\theta}\log\pi_{\theta}(s)Q^{\pi}(s,a)]
-\end{equation}
-しかしながら, DDPGでは$Q^{\pi}(s,a)$をcriticのNNが関数近似しているため, 計算している方策勾配は近似方策勾配となり, イメージ通りの勾配のノルムの単調減少が見られていないのではないかと考える. 逆に言えば, 勾配法が正しく進んでいない理由が$\tau$の学習率以前に, criticの学習がまだ不十分であることが原因だとわかったので, より多くの学習時間が必要であると考えられる.(やります)
+\subsubsection{シミュレーションの離散化による影響}
+要検討
 
 
 \begin{thebibliography}{10}

@@ -262,7 +262,7 @@ class selfDDPGAgent(self_Agent):
 
         # Book-keeping.
         self.recent_observation = observation
-        self.recent_action = action
+        self.recent_action = action #ここじゃなくてCBFの後に入れるべき
 
         return action
 

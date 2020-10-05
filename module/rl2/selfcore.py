@@ -53,7 +53,7 @@ class self_Agent(object):
 
     def fit(self, env, nb_steps, action_repetition=1, callbacks=None, verbose=1,
             visualize=False, step_log=False, original_log=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
-            nb_max_episode_steps=None, l=1):
+            nb_max_episode_steps=None, l=1, episode_time=20.):
         """Trains the agent on the given environment.
 
         # Arguments
@@ -225,7 +225,7 @@ class self_Agent(object):
                 accumulated_time += tau
                 if step_log:
                     print('\r' + f'{self.step}: tau = {tau}, state = {env.state}', end='')
-                if accumulated_time > 10.:
+                if accumulated_time > episode_time:
                     # Force a terminal state.
                     done = True
                 metrics = self.backward(reward, terminal=done)
@@ -238,7 +238,7 @@ class self_Agent(object):
                     self.save_agents_log()   
 
                 # to save laerning time, we stop testing if theta_dot is exploded
-                if abs(env.state[1]) > 10:
+                if abs(env.state[0]) > 1:
                     done = True
                     explosion = True
 
