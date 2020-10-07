@@ -63,11 +63,14 @@ class PendulumEnv2(gym2.Env):
 
     # modify to change start position
     def reset(self):
-        high = np.array([1, 1]) # start with inverted point
+        high = np.array([np.pi, 1]) # start with inverted point
+        self.state = self.np_random.uniform(low=-high, high=high) # th=0, -1<thd<1
+        """
         while 1:
             self.state = self.np_random.uniform(low=-high, high=high) # th=0, -1<thd<1
             if h(self.state, set_alpha()) > 0:
                 break
+        """
         self.last_u = None
         return self._get_obs()
 

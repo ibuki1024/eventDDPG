@@ -1,4 +1,4 @@
-This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  5 OCT 2020 10:32
+This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  7 OCT 2020 21:56
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -393,27 +393,32 @@ File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10> not available
 (Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 173.
  [4]
+File: split_NN.png Graphic file (type bmp)
+<split_NN.png>
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
 LaTeX Font Info:    Font shape `JT1/mc/m/it' in size <10> not available
-(Font)              Font shape `JT1/mc/m/n' tried instead on input line 191.
+(Font)              Font shape `JT1/mc/m/n' tried instead on input line 212.
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 191.
+(Font)              scaled to size 9.60999pt on input line 212.
 LaTeX Font Info:    Font shape `JY1/mc/m/it' in size <10> not available
-(Font)              Font shape `JY1/mc/m/n' tried instead on input line 191.
+(Font)              Font shape `JY1/mc/m/n' tried instead on input line 212.
 LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 191.
- [5]
-(./report.aux) )
+(Font)              scaled to size 9.60999pt on input line 212.
+[5] [6] (./report.aux) )
 (\end occurred inside a group at level 1)
 
 ### simple group (level 1) entered at line 182 ({)
 ### bottom level 
 Here is how much of TeX's memory you used:
- 2787 strings out of 493281
- 35609 string characters out of 6145042
- 119467 words of memory out of 5000000
- 6642 multiletter control sequences out of 15000+600000
+ 2792 strings out of 493281
+ 35716 string characters out of 6145042
+ 119475 words of memory out of 5000000
+ 6645 multiletter control sequences out of 15000+600000
  25189 words of font info for 110 fonts, out of 8000000 for 9000
  934 hyphenation exceptions out of 8191
- 27i,16n,25p,639b,322s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 27i,16n,25p,639b,347s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on report.dvi (5 pages, 22716 bytes).
+Output written on report.dvi (6 pages, 26056 bytes).
