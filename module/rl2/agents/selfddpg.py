@@ -457,11 +457,15 @@ class selfDDPGAgent2(selfDDPGAgent):
         combined_output = self.critic(combined_inputs) # Q(s,a|θ^Q)を示してる
 
         # 学習の進捗を確認するために, 全パラメータに対するgradientを確認する
+        # combined_outputはQ(s,a|θ^Q) (critic) の出力そのもので,
+        # K.mean(combined_output)にマイナスをつけることで, 最小化がQ関数の最大化と同じ役割をはたす.
+        # lossを-K.mean(combined_output)にすることでgradientはそれを小さくする方向に動く.
+        # meanなのは, memoryの分布がrho^piに従ってるという仮定でやってる(?)
         dummy_optimizer = optimizers.Optimizer()
         self.combined_inputs = combined_inputs
         self.loss_func = -K.mean(combined_output)
         self.gradients = dummy_optimizer.get_gradients(-K.mean(combined_output), self.actor.trainable_weights)
-        self.gradient_cauculate_function = self._gradient_cauculate_function()
+        self.gradient_calculate_function = self._gradient_calculate_function()
 
         # action_params_update と tau_params_updateで分ける
         action_tw, tau_tw = self._split_params()
@@ -600,20 +604,20 @@ class selfDDPGAgent2(selfDDPGAgent):
         
         return metrics
 
-    def _gradient_cauculate_function(self):
+    def _gradient_calculate_function(self):
         # function input
         input_tensors = [self.combined_inputs[1]]
         gradient_tensors = self.gradients
 
         # tensorflow running function
-        gradient_cauculate_function = K.function(input_tensors, gradient_tensors)
-        return gradient_cauculate_function
+        gradient_calculate_function = K.function(input_tensors, gradient_tensors)
+        return gradient_calculate_function
 
     def _get_current_gradient(self, state0_batch):
-        gradient_cauculate_function = self.gradient_cauculate_function
+        gradient_calculate_function = self.gradient_calculate_function
 
         # value
-        gradient_values = gradient_cauculate_function(state0_batch)
+        gradient_values = gradient_calculate_function(state0_batch)
         return gradient_values
 
 def _get_updates_original(params, loss, lr):
