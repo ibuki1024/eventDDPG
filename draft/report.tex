@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 10.5}}}
+\title{\large{\bf{進捗報告 10.8}}}
 \author{M2 竹内 維吹}
 \date{\today}
 \begin{document}
@@ -192,10 +192,24 @@ actorネットワークのパラメータは, 以下の方策勾配を用いて�
 	\nabla_{\theta^{\mu}}J(\theta^{\mu}) = \expect_{s\sim \rho^{\theta^{\mu}}}[\nabla_{\theta^{\mu}}\mu(s|\theta^{\mu})\nabla_aQ^{\theta^{\mu}(s,a)}|_{a=\mu(s|\theta^{\mu})}] \label{true_policy_gradient}
 \end{equation}
 ここで, ~$ \rho^{\theta^{\mu}}(s)=\int_{S}\sum_{t=0}^{\infty}\gamma^td_0(s_0)\textrm{Pr}(s_0\to s, k,  \theta^{\mu})\textrm{d}s_0$は, 割引分布という(時間割引された,全時刻における状態$s$の出現割合みたいなもの(?)). \par
-式\eqref{true_policy_gradient}から, $Q^{\theta^{\mu}}$が既知でなくては, 正しい方策勾配が計算できないことがわかる. actor-criticはpolicy iterationアルゴリズムの1つであり, 方策$\mu$の更新と$Q^{\mu}$を交互に更新し続ける. DDPGではactorとcriticを1ステップにつき1回のみ更新する(つまり, criticの収束を待たずして次のステップに進む). そこで, actorを固定したときに, 実際にはcriticの学習にはどの程度のステップ数が必要なのかを知っておきたく, その実験を行った.
+式\eqref{true_policy_gradient}から, $Q^{\theta^{\mu}}$が既知でなくては, 正しい方策勾配が計算できないことがわかる. actor-criticはpolicy iterationアルゴリズムの1つであり, 方策$\mu$の更新と$Q^{\mu}$を交互に更新し続ける. DDPGではactorとcriticを1ステップにつき1回のみ更新する(つまり, criticの収束を待たずして次のステップに進む). そこで, actorを固定したときに, 実際にはcriticの学習にはどの程度のステップ数が必要なのかを知っておきたく, その実験を行った.\par
+ここでは, 3つの方策$\mu_{i}$に対する$Q^{\mu}$の学習を実験する.ただし
+\begin{align}
+	\pi_1(s) &= \begin{bmatrix}\textrm{lqr}_{0.001}(s) \\ 0.001 \end{bmatrix} \\
+	\pi_2(s) &= \begin{bmatrix}\textrm{lqr}_{0.005}(s) \\ 0.1 \end{bmatrix} \\
+	\pi_3(s) &= \begin{bmatrix}\textrm a(s) \\ \tau(s) \end{bmatrix} \\
+\end{align}
+とする. ($\pi_3$に関しては,完全にランダムに初期化をしたNNで表現する,という意味で記載した.) \par
+学習は$\theta\in[-\pi, \pi], \dot{\theta}\in[-\pi,\pi]$を50000点発生させて, $\{s, \mu_i(s), r, s^{\prime}\}$の組を保存したreplay bufferからmini batchを作成して行った. その時のloss(mini batchのTD誤差の平均)の値の変化を追った時のプロットを図\ref{critic_loss}に示す.\\
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=15cm]{critic_loss.png}
+ 	\caption{criticの学習} \label{critic_loss}
+\end{figure}\\
+図\ref{critic_loss}より, 方策によって学習の様子が全く異なることが見てとれる.問題なのは$\pi_3$の学習で, これはlossが指数的に発散している. 学習率は他の2つに比べてかなり小さく取っての結果なので, 原因は最適化アルゴリズム以外にあると考える.
 
-\subsection{方策勾配の大きさによる, 入力信号$a$と通信間隔$\tau$の学習率の関係性}
-図actorネットワークを, ~$a(s)$と$\tau(s)$を分離したモデルとして用いる. 
+\subsection{方策勾配の大きさによる, 入力信号$a$と通信間隔$\tau$の学習率の考察}
+図\ref{split_NN}のようにactorネットワークを, ~$a(s)$と$\tau(s)$を分離したモデルとして用いる. 
 \begin{figure}[h]
 	\centering
  	\includegraphics[width=10cm]{split_NN.png}
@@ -205,6 +219,21 @@ actorネットワークの全パラメータを$\theta^{\mu}$,~$a(s)$と$\tau(s)
 \begin{equation}
 	\theta^{\mu}\gets \theta^{\mu} - \alpha_a\nabla_{\theta^a}J(\theta^{\mu}) - \alpha_{\tau}\nabla_{\theta^{\tau}}J(\theta^{\mu})
 \end{equation}
+研究の1つの成果物として,~$\alpha_a, \alpha_{\tau}$の理論的な大きさの設定方法について言及できればと考えている.そのため, 勾配$\nabla_{\theta^a}J(\theta^{\mu}), \nabla_{\theta^{\tau}}J(\theta^{\mu})$の大きさをそれぞれみてみる.~($\theta^{\tau}, \theta^{a}$はそれぞれ同じ長さのパラメータベクトルにしています.)\par
+6.1節でcriticが収束した$\pi_1, \pi_2$について, その方策勾配$\nabla_{\theta^a}J(\theta^{\mu}), \nabla_{\theta^{\tau}}J(\theta^{\mu})$のノルムを計算すると, $\pi_1$での値は
+\begin{align}
+	\|\nabla_{\theta^a}J(\theta^{\mu})\| &= 66.70076 \\
+	\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\| &= 8.730332e-05
+\end{align}
+$\pi_2$での値は,
+\begin{align}
+	\|\nabla_{\theta^a}J(\theta^{\mu})\| &= 1.9210727 \\
+	\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\| &= 4.414095e-05
+\end{align}
+となった. このことから,~$\theta^{\tau}$の微小変化が$J$に与える影響が非常に小さいことが見てとれる. 従って, $\pi_1, \pi_2$は$\theta^{\tau}$に関するlocal maximamにある可能性が高い. 
+\par
+また,~$\pi_3$に関しても調べたいところであるが,正しい$Q$関数が得られていないので計算はできない. おそらく$\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\|$が2つの方策の場合に対してかなり大きいのではないかと考えている. これは$\tau(s)$がどちらかに張り付くことからの予想である.\par
+以上のことから, 初期方策として$\pi_1, \pi_2$を選んだ場合, ~$\tau(s)$に関しての局所最適解となっている特性と, これらの間にある方策(例えば$\pi_3$)での$\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\|$が大きいという特性から,強化学習の途中で$\tau(s)$が大きく揺れてしまうことが予想される. そのため, 学習が進むにつれて減衰し, 勾配のノルムに反比例するような学習率$\alpha_{\tau}$を導入するのはどうかと考える.
 
 
 \begin{thebibliography}{10}

@@ -28,3 +28,40 @@ def discretized_system(A, B, dt):
     Ad = np.eye(A.shape[0]) + dt * A
     Bd = dt * B
     return Ad, Bd
+
+def _gain(env, dt=None):
+    m, l, g = env.m, env.l, env.g
+
+    A = np.array([[0, 1], [(3*g)/(2*l), 0]])
+    B = np.array([[0], [3/(m*l**2)]])
+    Q = np.array([[1, 0], [0, 0.1]])
+    R = np.array([[0.001]])
+    
+    if dt is not None:
+        Ad, Bd = discretized_system(A, B, dt)  
+        K = dlqr(Ad,Bd,Q,R)[0]
+    else:
+        K = lqr(A,B,Q,R)[0]
+    
+    return K
+
+
+def make_standup_agent(actor_net, tau, env, verbose=False):
+    # 学習データの用意
+    action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
+    dt = tau / action_repetition
+    K = _gain(env, dt)
+    x_train = []
+    y_train = []
+    for i in range(30000):
+        x_train.append([np.random.randn(2,) / 10.])
+        y_train.append([np.dot(K, x_train[-1][0]), tau])
+
+    x_train = np.array(x_train)
+    y_train = np.array(y_train)
+
+    # 学習
+    actor_net.compile(loss='mean_squared_error',optimizer='adam')
+    actor_net.fit(x_train, y_train, batch_size=128, epochs=50, verbose=verbose)
+
+    return actor_net
