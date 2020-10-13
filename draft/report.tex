@@ -230,10 +230,107 @@ $\pi_2$での値は,
 	\|\nabla_{\theta^a}J(\theta^{\mu})\| &= 1.9210727 \\
 	\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\| &= 4.414095e-05
 \end{align}
-となった. このことから,~$\theta^{\tau}$の微小変化が$J$に与える影響が非常に小さいことが見てとれる. 従って, $\pi_1, \pi_2$は$\theta^{\tau}$に関するlocal maximamにある可能性が高い. 
+となった. このことから,~$\theta^{\tau}$の微小変化が$J$に与える影響が非常に小さいことが見てとれる. \par
+
+\section{2つのパラメータに関する方策勾配の考察}
+前節で行った検証により倒立振子の場合には, ~actorを表現する2つのニューラルネットワークのパラメータに関する方策勾配$\nabla_{\theta^a}J(\theta^{\mu}), \nabla_{\theta^{\tau}}J(\theta^{\mu})$の大きさがかなり異なっていた. このことから, 制御対象に関するどのような前提があれば$\|\nabla_{\theta^a}J(\theta^{\mu})\|>\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\|$となるのかを考えてみる.\par
+評価関数$J(\theta^{\mu})=\expect_{s_0\sim d_0}[V^{\theta^{\mu}}(s_0)]$であることから$\nabla_{\theta^{\mu}}J(\theta^{\mu})=\int_{S}d_0(s)\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s)\textrm{d}s$なので, まず$\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s)$について詳しくみていく. 価値関数$V^{\theta^{\mu}}(s)$の(一般的な)性質から, 
+\begin{equation}
+	\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s) = \nabla_{\theta^{\mu}}[r(s, \mu(s|\theta^{\mu}))+\gamma V^{\theta^{\mu}}(s^{\prime})]
+\end{equation}
+微分のchain~ruleより,
+\begin{align}
+	\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s) &= \nabla_{\theta^{\mu}}\mu(s|\theta^{\mu})\nabla_ur(s, u)|_{u=\mu(s|\theta^{\mu})}\nonumber\\
+	&+\gamma\int_{S}\nabla_{\theta^{\mu}}\mu(s|\theta^{\mu})\nabla_{u}\textrm{Pr}(s^{\prime}|s, u)|_{u=\mu(s|\theta^{\mu})}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime}\nonumber\\
+	&+\gamma\int_{S}\textrm{Pr}(s^{\prime}|s, \mu(s))\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime} \label{recurrence}
+\end{align}
+となる(ただし,~$u=[a,\tau$]). この式は微分するパラメータをactor全体のパラメータ$\theta^{\mu}$ではなく,入力信号$a$, 通信間隔$\tau$のネットワークのパラメータのみに絞った場合にも同じような式が成り立つはずである. つまり,
+\begin{align}
+	\nabla_{\theta^{a}}V^{\theta^{\mu}}(s) &= \nabla_{\theta^{a}}\mu(s|\theta^{\mu})\nabla_{a}r(s, u)|_{u=\mu(s|\theta^{\mu})}\nonumber\\
+	&+\gamma\int_{S}\nabla_{\theta^{a}}\mu(s|\theta^{\mu})\nabla_{a}\textrm{Pr}(s^{\prime}|s, u)|_{u=\mu(s|\theta^{\mu})}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime}\nonumber\\
+	&+\gamma\int_{S}\textrm{Pr}(s^{\prime}|s, \mu(s))\nabla_{\theta^{a}}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime} \label{recurrence_a}
+\end{align}
+\begin{align}
+	\nabla_{\theta^{\tau}}V^{\theta^{\mu}}(s) &= \nabla_{\theta^{\tau}}\mu(s|\theta^{\mu})\nabla_{\tau}r(s, u)|_{u=\mu(s|\theta^{\mu})}\nonumber\\
+	&+\gamma\int_{S}\nabla_{\theta^{\tau}}\mu(s|\theta^{\tau})\nabla_{\tau}\textrm{Pr}(s^{\prime}|s, u)|_{u=\mu(s|\theta^{\mu})}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime}\nonumber\\
+	&+\gamma\int_{S}\textrm{Pr}(s^{\prime}|s, \mu(s))\nabla_{\theta^{\tau}}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime} \label{recurrence_tau}
+\end{align}が成り立つ.以下$\theta_{\tau}, \theta_a$の両方に成り立つ議論をする場合に, 便宜上$\theta$を用いることとする.  \par
+システム\eqref{continuous}は確定系なので, 
+\begin{equation}
+	s^{\prime} = s + \int_{0}^{\tau(s)}(f(t)+g(t)a(s))\textrm{d}t
+\end{equation}
+と定まり, 各漸化式の第3項目は
+\begin{equation}
+	\int_{S}\textrm{Pr}(s^{\prime}|s, \mu(s))\nabla_{\theta}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime}=\nabla_{\theta}V^{\theta^{\mu}}(s + \int_{0}^{\tau(s)}(f(t)+g(t)a(s))\textrm{d}t)
+\end{equation}
+となる.\par
+またシステムと方策$\pi(s)$が確定的であるので, 全インターバルの開始時刻での状態は, 初期状態を引数とする関数で書け, $s^{(n)}(s)$と表記する. 同じく, 漸化式の第1,2項目までの和も確定的であり, $k^{(n)}(s)$とすれば, 
+\begin{align}
+	\nabla_{\theta}V^{\theta^{\mu}}(s) = \sum_{n=0}^{\infty} \gamma^{i}k^{(n)}(s)
+\end{align}
+となるため, $k^{(n)}(s)$を解析的に表現できれば, 価値関数の勾配を解析的に書けそうである.
+
+\subsection{注意}
+$\nabla_{\theta^{\tau}}\mu(s|\theta^{\mu})$,~$\nabla_{\theta^{a}}\mu(s|\theta^{\mu})$に関しては, ニューラルネットワークモデルの設定にしか依存しないものなので, 今回は特段着目しない.
+
+\subsection{漸化式の第1項目について}
+初めに, 漸化式\eqref{recurrence_tau}の右辺第1項に関して考察する.~$T$を各インターバルの開始時刻だとすると, 
+\begin{align}
+	\nabla_{\tau}r(s, u)|_{u=\mu(s|\theta^{\mu})} &= -\nabla_{\tau}\int_{T}^{T+\tau} s(t)^{\top}Qs(t)\textrm{d}t - \nabla_{\tau}(\tau a^{\top}Ra) + \nabla_{\tau}(\lambda\tau) \nonumber\\
+	&= -\nabla_{\tau}\int_{0}^{\tau} s(t+T)^{\top}Qs(t+T)\textrm{d}t - a^{\top}Ra + \lambda \nonumber\\
+	&= - s(\tau+T)^{\top}Qs(\tau+T) - a^{\top}Ra + \lambda \label{reward_tau_gradient}
+\end{align}
+となる. ただし, 
+\begin{equation}
+	s(t+T) = s(T) + \int_{0}^{t} (f(l+T)+g(l+T)a(T))\textrm{d}l \label{solution}
+\end{equation}
+であることを注意しておく.
 \par
-また,~$\pi_3$に関しても調べたいところであるが,正しい$Q$関数が得られていないので計算はできない. おそらく$\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\|$が2つの方策の場合に対してかなり大きいのではないかと考えている. これは$\tau(s)$がどちらかに張り付くことからの予想である.\par
-以上のことから, 初期方策として$\pi_1, \pi_2$を選んだ場合, ~$\tau(s)$に関しての局所最適解となっている特性と, これらの間にある方策(例えば$\pi_3$)での$\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\|$が大きいという特性から,強化学習の途中で$\tau(s)$が大きく揺れてしまうことが予想される. そのため, 学習が進むにつれて減衰し, 勾配のノルムに反比例するような学習率$\alpha_{\tau}$を導入するのはどうかと考える.
+次に, 漸化式\eqref{recurrence_a}の右辺第1項に関して考察する. 
+\begin{align}
+	\nabla_{a}r(s, u)|_{u=\mu(s|\theta^{\mu})} &= -\nabla_{a}\int_{T}^{T+\tau} s(t)^{\top}Qs(t)\textrm{d}t - \nabla_{a}(\tau a^{\top}Ra) + \nabla_{a}(\lambda\tau) \nonumber\\
+	&= -\nabla_{a}\int_{0}^{\tau} s(t+T)^{\top}Qs(t+T)\textrm{d}t - \tau Ra \nonumber\\
+	&= -\int_{0}^{\tau} (\pdif{s(t+T)}{a}^{\top}Qs(t+T)+s(t+T)^{\top}Q\pdif{s(t+T)}{a})\textrm{d}t - \tau Ra \nonumber \\
+	&= -2\int_{0}^{\tau} s(t+T)^{\top}Q\pdif{s(t+T)}{a}\textrm{d}t - \tau Ra~(∵Q:対称)
+\end{align}
+式\eqref{solution}より, 
+\begin{align}
+	\pdif{s(t+T)}{a} &= \pdif{}{a}\int_{0}^{t} (f(l+T)+g(l+T)a)\textrm{d}l \nonumber \\
+	&= \int_{0}^{t} g(l+T)\textrm{d}l
+\end{align}
+なので, 
+\begin{equation}
+	\nabla_{a}r(s, u)|_{u=\mu(s|\theta^{\mu})} = -2\int_{0}^{\tau}s(t+T)^{\top}Q\left\{\int_{0}^{t}g(l+T)\textrm{d}l\right\}\textrm{d}t - \tau Ra \label{reward_a_gradient}
+\end{equation}
+と表せる.したがって, インターバルの開始状態$s(T)$と,~$u=\mu(s|\theta^{\mu})$がわかれば各インターバルにおけるステップ報酬の勾配の比較は可能である.\par
+最後に, 各インターバルの開始時刻での状態は
+\begin{equation}
+	s^{(n)}(s) = s^{(0)}(s) + \sum_{i=0}^{n−1}\int_{T_i}^{T_i + \tau(s^{(i)}(s))}(f(T_i+t)+g(T_i+t)a(s^{(i)}(s)))\textrm{d}t
+\end{equation}
+と書けるため, 式\eqref{reward_tau_gradient}, \eqref{reward_a_gradient}に代入すれば全ステップでの$r$の勾配は, 関数$V$の引数$s$の関数として表せる. ただし,~$T_i = \sum_{i=0}^{n-1}\tau(s^{(i)}(s))$である. 
+
+
+\subsection{漸化式の第2項目について}
+各漸化式の第2項目には確率密度関数の勾配が存在しており, 遷移が確定的である場合にどう扱えば良いのかわかりませんでした...
+
+
+% comment
+\if0
+考えているのは\eqref{continuous}のような確定系なので,~$\textrm{Pr}(s^{\prime}|s, u)$が何に置き換わるのかを考えています.
+\fi
+
+\begin{align*}
+	\nabla_{\theta}V^{\theta}(s) &= \nabla_{\theta}[r(s, \mu(s|\theta))+\gamma V^{\theta}(s^{\prime}(\theta))] \\
+	&= \nabla_{\theta}r(s, \mu(s|\theta)) + \gamma\nabla_{\theta}V^{\theta}(s^{\prime}(\theta)) \\
+	~\\
+	\nabla_{\theta}V^{\theta}(s^{\prime}(\theta)) &=  \lim_{h\to0} \frac{V^{\theta+h}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta))}{h} \\
+	&= \lim_{h\to0}\left\{\frac{V^{\theta+h}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta+h))}{h} + \frac{V^{\theta}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta))}{h}\right\} \\
+	&= \lim_{h\to0}\frac{V^{\theta+h}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta+h))}{h} + \lim_{h\to0}\frac{V^{\theta}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta))}{h} \\
+	&= \nabla_{\theta}V^{\theta}(s^{\prime})|_{s^{\prime}=s^{\prime}(\theta)} + \nabla_{s^{\prime}}V^{\theta}(s^{\prime})\nabla_{\theta}s^{\prime}(\theta)
+\end{align*}
+
+
+
 
 
 \begin{thebibliography}{10}
