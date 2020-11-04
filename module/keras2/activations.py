@@ -208,7 +208,7 @@ def multiple_tanh(x, ratio=10.):
 
 
 def tau_output(x, minimum=0.001):
-    return 0.099 * K.sigmoid(x) + K.constant(minimum)
+    return 0.999 * K.sigmoid(x) + K.constant(minimum)
 
 
 def self_trigger_output(tensor, minimum=0.001):

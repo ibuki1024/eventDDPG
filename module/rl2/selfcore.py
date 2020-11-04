@@ -238,7 +238,7 @@ class self_Agent(object):
                     self.save_agents_log()   
 
                 # to save laerning time, we stop testing if theta_dot is exploded
-                if abs(env.state[0]) > 1:
+                if abs(env.state[1]) > 10:
                     done = True
                     explosion = True
 

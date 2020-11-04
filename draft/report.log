@@ -1,4 +1,4 @@
-This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  13 OCT 2020 16:54
+This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  2 NOV 2020 08:46
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -359,67 +359,75 @@ LaTeX Font Info:    Font shape `JT1/gt/m/n' will be
 (Font)              scaled to size 13.83836pt on input line 41.
 LaTeX Font Info:    Font shape `JY1/gt/m/n' will be
 (Font)              scaled to size 13.83836pt on input line 41.
+ [1
+
+]
+
+LaTeX Warning: Citation `DQN' on page 2 undefined on input line 74.
+
+
+LaTeX Warning: Citation `DPG' on page 2 undefined on input line 78.
+
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 6.72699pt on input line 48.
+(Font)              scaled to size 6.72699pt on input line 85.
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 4.805pt on input line 48.
+(Font)              scaled to size 4.805pt on input line 85.
+
+LaTeX Warning: Citation `DDPG' on page 2 undefined on input line 88.
+
+[2]
 File: event.png Graphic file (type bmp)
 <event.png>
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 8.64899pt on input line 69.
+(Font)              scaled to size 8.64899pt on input line 115.
 LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 8.64899pt on input line 69.
- [1
-
-] [2]
+(Font)              scaled to size 8.64899pt on input line 115.
+ [3]
+File: tau_exp_ave.png Graphic file (type bmp)
+<tau_exp_ave.png>
 LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 5.76599pt on input line 118.
+(Font)              scaled to size 5.76599pt on input line 156.
 LaTeX Font Info:    Font shape `JY1/gt/m/n' will be
-(Font)              scaled to size 7.68799pt on input line 118.
+(Font)              scaled to size 8.64899pt on input line 156.
 LaTeX Font Info:    Font shape `JY1/gt/m/n' will be
-(Font)              scaled to size 5.76599pt on input line 118.
-File: barrier_certificate.png Graphic file (type bmp)
-<barrier_certificate.png>
+(Font)              scaled to size 5.76599pt on input line 156.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[3]
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 173.
+File: gradient_log.png Graphic file (type bmp)
+<gradient_log.png>
 
- (/usr/local/texlive/2018/texmf-dist/tex/latex/base/omscmr.fd
-File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
-)
-LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 173.
- [4]
-File: critic_loss.png Graphic file (type bmp)
-<critic_loss.png>
- [5]
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[4] [5]
 File: split_NN.png Graphic file (type bmp)
 <split_NN.png>
+ [6]
 
-[6] [7] [8]
+LaTeX Warning: Reference `continuous' on page 7 undefined on input line 228.
+
+[7] [8]
 LaTeX Font Info:    Font shape `JT1/mc/m/it' in size <10> not available
-(Font)              Font shape `JT1/mc/m/n' tried instead on input line 338.
+(Font)              Font shape `JT1/mc/m/n' tried instead on input line 326.
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 338.
+(Font)              scaled to size 9.60999pt on input line 326.
 LaTeX Font Info:    Font shape `JY1/mc/m/it' in size <10> not available
-(Font)              Font shape `JY1/mc/m/n' tried instead on input line 338.
+(Font)              Font shape `JY1/mc/m/n' tried instead on input line 326.
 LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 338.
- [9] (./report.aux) )
-(\end occurred inside a group at level 1)
+(Font)              scaled to size 9.60999pt on input line 326.
+ [9] (./report.aux)
 
-### simple group (level 1) entered at line 182 ({)
-### bottom level 
+LaTeX Warning: There were undefined references.
+
+ ) 
 Here is how much of TeX's memory you used:
- 2803 strings out of 493281
- 35917 string characters out of 6145042
- 123537 words of memory out of 5000000
- 6654 multiletter control sequences out of 15000+600000
- 25189 words of font info for 110 fonts, out of 8000000 for 9000
+ 2789 strings out of 493281
+ 35653 string characters out of 6145042
+ 121565 words of memory out of 5000000
+ 6644 multiletter control sequences out of 15000+600000
+ 25190 words of font info for 110 fonts, out of 8000000 for 9000
  934 hyphenation exceptions out of 8191
- 27i,16n,25p,639b,347s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 27i,14n,25p,605b,384s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on report.dvi (9 pages, 42364 bytes).
+Output written on report.dvi (9 pages, 48096 bytes).

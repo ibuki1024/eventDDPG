@@ -31,36 +31,82 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 10.8}}}
+\title{\large{\bf{進捗報告 11.2}}}
 \author{M2 竹内 維吹}
 \date{\today}
 \begin{document}
 \maketitle
 
 
-\section{前提}
-入力アフィン系のセルフトリガー制御を考える. 
-\begin{equation}
-	\dot{s} = f(s) + g(s)a \label{continuous}
-\end{equation}
+\section{はじめに}
+近年, 機械学習分野で注目を集めているトピックとして強化学習というものがある. これは, ロボットなどが環境とのインタラクションを通じて, 最適な制御方策を見つけ出していくというものである. その中でも, 強化学習にニューラルネットワークを組み込んだ深層強化学習は, その適応能力の高さから多くの研究がなされている.しかしながら, 深層強化学習にはハイパーパラメータへの強い依存性など, 依然として課題点が多くまだまだ発展途上にある.\par
+本稿では, 対象となる問題を最適セルフトリガー制御問題というものに絞り, 強化学習の課題点に対して有効な特性の調査に向けた準備を行う. まず,深層強化学習の基礎についての確認を行った後, 最適セルフトリガー制御問題を定式化し, その強化学習に特有の課題点を抽出する.最後に, その課題点の解決に向けた今後の展望についても簡単に述べる.
 
-\subsection{倒立振子による実験}
-倒立時の振子の角度を$\theta=0$とし, 加えられる入力が$A=[-10\textrm{N}\cdot\textrm{m},10\textrm{N}\cdot\textrm{m}]$と制限されるような倒立振子を考える.この倒立振子のダイナミクスは, 以下のように与えられる.
+\section{方策勾配を用いた強化学習}
+\subsection{強化学習の基礎知識}
+マルコフ決定過程$M$を$M=\{S,A,T,d_0,r,\gamma\}$として与える。ここで$S,A$はそれぞれ状態,行動集合,~$T(s^{'}|s,a)$は状態遷移確率を表す.また$d_0,r(s,a),\gamma\in[0,1]$はそれぞれ初期状態分布, 報酬, 割引率を示す.\par
+さて, 強化学習の目的は
 \begin{equation}
-	\odif{}{t}\begin{pmatrix}\theta \\ \dot{\theta}\end{pmatrix} = 
-		\begin{pmatrix}\dot{\theta} \\ \frac{3g}{2l}\sin{\theta} + \frac{3}{ml^2}a \end{pmatrix} \label{pendulum}
-\end{equation}
-
-コンピュータで強化学習を行う場合, これを離散化したシステムについて計算を行う必要がある.上記の状態方程式を離散化すると以下のようになる.
+	\pi^{*}=\argmax_{\pi}J(\pi) \label{purpose_of_rl}
+\end{equation}を求めることである. ここで, 
 \begin{align}
-	\theta_{t+1} &= \theta_t+\dot{\theta}_t\delta_t+\frac{3g}{2l}\sin{\theta_t}\delta_t^2+\frac{3}{ml^2}a\delta_t^2 \tag{3a}\\
-	\dot{\theta}_{t+1} &=  \dot{\theta}_t+\frac{3g}{2l}\sin{\theta_t}\delta_t+\frac{3}{ml^2}a\delta_t \tag{3b}
-\end{align}\label{pend}
-\setcounter{equation}{3}
-ただし, $\delta_t$は離散化定数である.\par
+	V^{\pi}(s) &= \sum_{t=0}^{\infty}\gamma^tr(s_t, a_t)|_{a_t=\pi(s_t)}, s_0 = s\\
+	J(\pi) &= \expect_{s_0\sim d_0}[V^{\pi}(s_0)]
+\end{align}
+であり,~$J(\pi), V^{\pi}(s)$をそれぞれ評価関数, (状態)価値関数とよぶ.\par
+強化学習を解析するツールとして有用な関数として$Q$関数がある.
+\begin{align}
+	Q^{\pi}(s,a) &= r(s, a) + \gamma\sum_{t=1}^{\infty}\gamma^tr(s_t, a_t)|_{a_t=\pi(s_t)} \nonumber\\
+			    &= r(s, a) + \gamma V^{\pi}(s^{\prime}) \label{Q_func}
+\end{align}
+式\eqref{Q_func} より,~$Q$関数は開始時刻において自由に行動$a$を選択して, 次ステップから方策$\pi$に従った時の価値を表す. したがって,~$Q$関数は行動価値関数という別名がある.
 
+\subsection{方策反復法}
+式\eqref{purpose_of_rl}を達成するためのアルゴリズムとして方策反復法というものがある.これは以下の2つのステップを繰り返すというものである.
+\begin{enumerate}
+	\item 方策評価: 行動価値関数$Q^{\pi}(s,a)$を求め(または, 近似す)る.
+	\item 方策改善: 求めた$Q^{\pi}(s,a)$に従って, ~$\pi(s)=\argmax_aQ^{\pi}(s,a)$と方策を更新する.
+\end{enumerate}
+以上の2ステップを繰り返すことで最適方策$\pi^{*}$が得られることが知られている.(方策改善定理)
 
-\section{現状確認}
+\subsection{状態空間, 行動空間の特性に合わせたアルゴリズム}
+状態空間も行動空間も離散値をとる場合,~$Q^{\pi}(s,a)$をテーブルに保存しておくことで, 前節で登場した$\pi(s)=\argmax_aQ^{\pi}(s,a)$を容易に求めることができる.\par
+では, 状態空間が連続値の場合はどうか. 状態$s$が無限種類の値をとることになるため, テーブルに保存することができない. そこでMinhら\cite{DQN}は, $Q^{\pi}(s,a)$をニューラルネットワークを用いてパラメトライズして近似するアプローチをとった. ここでも, 行動空間は離散であるため$\argmax_aQ^{\pi}(s,a)$を求めることは可能である.\par
+最後に, 状態空間も行動空間も連続値である場合は$\argmax_aQ^{\pi}(s,a)$を求めるのに膨大なコストがかかるという問題点がある. したがって, これまでは方策$\pi$は$Q$関数によって定めていたが, 両空間が連続値の場合にはこのアプローチはとれない. そこで, 方策関数も独立に$\pi_{\theta}$のようにパラメトライズした関数として用意し,~パラメータ$\theta$を勾配法などで更新する手法が取られることが多い.
+
+\subsection{方策勾配による方策関数のパラメータの更新}
+Silverら\cite{DPG}は, 方策が$\pi(s)$のように決定論的に定めるものとして与えた場合に, 評価関数$J(\pi_{\theta})$に対する勾配を計算する手法を発見した. この勾配は決定論的方策勾配(DPG:Deterministic Policy Gradient)とよばれ, 以下のように計算することができる.
+\begin{align}
+	\nabla_{\theta}J(\pi_{\theta}) &= \expect_{s\sim\rho^{\pi}}[
+	\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q^{\pi_{\theta}}(s, a)|_{a=\pi_{\theta}(s)}] \label{true_pg} 
+\end{align}
+ただし, 
+\begin{equation}
+	\rho^{\pi}(s) = \int_{S}\sum_{t=0}^{\infty}\gamma^td_0(s_0)\textrm{Pr}(s_0\to s, t,  \pi)\textrm{d}s_0
+\end{equation}
+を割引分布という.\par
+この方策勾配を深層強化学習の枠組みに取り入れたアルゴリズムがDDPG(Deep DPG)\cite{DDPG}である.これはActor-Critic構造を採用しており,~$Q^{\pi_{\theta}}$を近似するcriticネットワーク$Q(s,a|\omega)$と,方策$\pi$を表現するactorネットワーク$\pi(s|\theta)=\pi_{\theta}$をそれぞれ学習する手法である. 以下に,この近似勾配を用いたactorとcriticの更新アルゴリズムを記す.\par
+DDPGはミニバッチ学習を用いる. 過去の経験データ$(s_t, a_t, r_t, s_{t+1})$を保存しておき, その中から$N$個のデータを取り出し(ミニバッチ, $E$と記載する),そのデータ集合に対する最適化を行う. まず, criticの更新から記す.~criticの目的は$Q^{\pi}$を近似することである.~$Q$関数は式\eqref{Q_func}のように分解することが可能で有るため,~$Q(s,a|\omega)$もこれを満たすように更新すればよい.そのためにTD(Temporal Difference)誤差
+\begin{equation}
+	\textrm{TD} = Q(s,a|\omega) - \{r(s,a)+\gamma Q(s,\pi(s)|\omega)\}
+\end{equation}
+が最小となる方向に$\omega$を更新する. 全ての$(s,a)$についてこれを一度に行うことはできないので, 作成したミニバッチ$E$に対する平均二乗誤差
+\begin{equation}
+	Loss = \frac{1}{N}\sum_{s\in E} \textrm{TD}^2
+\end{equation}
+をLoss関数として, このLoss関数を減らすようにアルゴリズムを働かせる. \par
+さて, 上記のcriticの更新方法は教師あり学習そのものである. 従ってミニバッチに含まれるデータはi.i.d.であることが要求される. もしミニバッチ$E$がエージェントが経験した直近の$N$ステップのデータを用いると, これらは独立ではなくなってしまう. 従って, エージェントは環境とのインタラクションによって得られた経験データをexperience replayに保存しておき, そこから無作為に$N$このデータを選びとる手法でデータの分散を上げている.\par
+次にactorの更新を記す.~actorは方策関数$\pi(s)$を表現するものであり, パラメータの更新には方策勾配を用いる.ただし,~DDPGでは式\eqref{true_pg}のように正しい$Q$関数を用いることができないので, 
+\begin{equation}
+	\expect_{s\sim\rho^{\pi}}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] \simeq \nabla_{\theta}J(\pi_{\theta}) 
+\end{equation}
+のようにcriticネットワークを用いて近似した方策勾配を用いる. さらに, 期待値に関して, 
+\begin{equation}
+	\expect_{s\sim\rho^{\pi}}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] \simeq \frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}]
+\end{equation}
+という近似も行っている. 従って, この近似勾配$g=\frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}]$はcriticの近似精度とミニバッチの分布によって大きく性能を落としてしまう可能性があり, 大きな問題点であると言える.
+
+\section{最適セルフトリガー制御問題に対する強化学習}
 \subsection{セルフトリガー制御}
 図\ref{image}のような制御系を考える.
 \begin{figure}[h]
@@ -70,145 +116,69 @@
 \end{figure}\par
 これに対するフィードバック制御を考える. 状態変数$s$を観測してアクチュエータに入力信号を送信することを「インタラクション」と呼ぶと,セルフトリガー制御では, 連続的なインタラクションは行わずに, 次のインタラクションを何秒後に行うかをエージェントが決定する. それを数式上で表すため, エージェントの制御則$\pi(s)$は2つの要素からなるベクトル値関数であるとし, 1つ目の要素はアクチュエータに送信する入力$a$,~2つ目の要素は次にインタラクションを行うまでの時間間隔$\tau~(s:秒)$を表すものとする.また, 次のインタラクションを行う時刻までは1つ前のインタラクションで送信した入力$a$を加え続けるものとする(ZOH制御).
 
-\subsection{目標点の確認}
-研究を通しての目標は「安全性を確保しながら, 最適セルフトリガー制御則$\pi^{*}$の強化学習を実現させること」である。ここで
+\subsection{最適セルフトリガー制御}
+最適なセルフトリガー制御則$\pi^{*}$を, 以下のように定義する. 
 \begin{align}
 	\pi^{*} &= \argmax_{\pi}J(\pi) \label{optimal_policy}\\
 	J(\pi) &= \expect_{s_0\in d_0}[V^{\pi}(s_0)] \\
 	% V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i\{-s_i^{\top}Qs_i-\pi_1(s_i)^{\top}R\pi_1(s_i)+\lambda \pi_2(s_i)\} \\
-	V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i C^{\pi}_i \label{value} \\
-	C^{\pi}_i &= -\int_{T_i}^{T_{i+1}}s(t)^{\top}Qs(t)\textrm{d}t +\tau_ia_i^{\top}Ra_i + \lambda \tau_i, ~T_i = \sum_{l=0}^{i} \tau_l \label{reward}
+	V^{\pi}(s_0) &= \sum_{i=0}^{\infty} \gamma^i r^{\pi}_i \label{value} \\
+	r^{\pi}_i &= -\int_{T_i}^{T_{i+1}}s(t)^{\top}Qs(t)\textrm{d}t +\tau_ia_i^{\top}Ra_i + \lambda \tau_i, ~T_i = \sum_{l=0}^{i} \tau_l \label{reward}
 \end{align}
-であり,~$\pi_1, \pi_2$は$\pi$の第1,第2成分である. また, $i$はインタラクションの回数を示し, $a_i, \tau_i$はそれぞれ$i$回目のインタラクションでの方策$\pi$の出力である. \par
+ここで, $i$はインタラクションの回数を示し, $a_i, \tau_i$はそれぞれ$i$回目のインタラクションでの方策$\pi$の出力であるとする. \par
 さて, 一般的に強化学習では, 1ステップ1ステップの行動の良し悪しを評価して方策を更新していく. 
 インタラクションとインタラクションの間の区間を「インターバル」と呼ぶと, 式(\ref{value})より, この問題は各インターバルを1ステップとした強化学習問題であると考えることができる. \par
-以下では方策$\pi$を$\theta$でパラメトライズし, $\theta^{*} = \argmax_{\theta}J(\pi_{\theta})$を解くことによって$\pi^{*} = \argmax_{\pi}J(\pi)$を得るものとする. 方策勾配を用いた強化学習では$\nabla_{\theta}J(\pi)$を用いて$\theta^{*}$を求める. その際方策勾配$\nabla_{\theta}J(\pi)$の近似のため, 実環境とのインタラクションによって得られたデータ組$\{s,a,r,s^{\prime}\}$を用いる. 「学習中の安全」という言葉を, 「このデータ組の収集を決められた安全領域$\mathcal{C}$の内部でのみ行うこと」と定義する.\par
 
+\section{数値実験による課題点の抽出}
+上記の問題は, 一般的な強化学習のフレームワークにそのまま落とし込むことができるため, 数値実験を行うことが可能である. 数値実験の結果を通して, 最適セルフトリガー制御の強化学習にどのような課題点があるのかを考察していく.\par
+実験環境はOpen-AI Gymのpendulumで, 初期状態が$\theta\sim N(0, \pi), \dot{\theta}\sim U(-\pi,\pi)$となるような環境で行った. またreplay bufferの分散を上げるため,~10秒間の制御を1エピソードと定義し, エピソードを重ねることで経験データを増やしていく. また, pendulumは以下のようなダイナミクスに従っており入力アフィン系の非線型システムである.
+\begin{equation}
+	\odif{}{t}\begin{pmatrix}\theta \\ \dot{\theta}\end{pmatrix} = 
+		\begin{pmatrix}\dot{\theta} \\ \frac{3g}{2l}\sin{\theta} + \frac{3}{ml^2}a \end{pmatrix} \label{pendulum}
+\end{equation}
 
-\subsection{実現可能性の検証:サンプル値系での実験}
-上記の目標を達成する見込みがあるのかを検証するために, サンプル値系での実験を行う. サンプル値系では,セルフトリガー制御と同様に連続的なインタラクションは行わない. セルフトリガー制御との違いは, インタラクションの間隔がエージェントによって状態$s$依存で決定するのではなく, 制御問題の設定として定数$t_{\rm{int}}$で与えられる点である.したがってサンプル値系での制御方策$\pi_{\rm{sample}}$は,アクチュエータに送信する入力信号$a$のみを出力する関数として与える.\par
-サンプル値系での実験により, $t_{\rm{int}}=0.001(s)$のサンプル値系での最適方策
+\subsection{初期方策}
+学習の初期方策として
 \begin{align}
 \begin{cases}
-	\pi_{\rm{sample},1} = -\argmax_{\pi_{\rm{sample}}} \displaystyle\sum_{i=0}^{\infty} \int_{it_{\rm{int}}}^{(i+1)t_{\rm{int}}}s(t)^{\top}Qs(t)\textrm{d}t + t_{\rm{int}}a_i^{\top}Ra_i \\
-	a_i  = \pi_{\rm{sample}}(s(it_{\rm{int}}))
-\end{cases}
-\end{align}
-を初期方策として,~$t_{\rm{int}}=0.002(s)$のサンプル値系での最適方策
-\begin{align}
-\begin{cases}
-	\pi_{\rm{sample},2} = -\argmax_{\pi_{\rm{sample}}} \displaystyle\sum_{i=0}^{\infty} \int_{it_{\rm{int}}}^{(i+1)t_{\rm{int}}}s(t)^{\top}Qs(t)\textrm{d}t + t_{\rm{int}}a_i^{\top}Ra_i  \\
-	a_i  = \pi_{\rm{sample}}(s(it_{\rm{int}}))
-\end{cases}
-\end{align}
- を学習中の安全性を満たしながら学習できるかを検証する. 
-
-\subsection{セルフトリガー制御への発展}
-前節での検証によって, インタラクション間隔を大きくしても安全強化学習を行うことが可能であることを確認できたとする. サンプル値系での制御則は入力信号$a$のみを出力する関数であったので, 入力信号$a$とインタラクション間隔$\tau$の二つの要素を出力する必要があるセルフトリガー制御の初期方策として方策$\pi_{\rm{sample},1}$をそのまま用いることはできない. \par
-そこで代替策として,
-\begin{align}
-\begin{cases}
-	\pi_1(s)=\pi_{\rm{sample},1}(s)\\
-	\pi_2(s)=0.001
+	a(s)=a_{0.001}^{*}(s)\\
+	\tau(s)=0.001
 \end{cases} \label{pi_init}
 \end{align}
-とする方策$\pi_{\rm{init}}$をセルフトリガー制御の強化学習のための初期方策として用いる.
+とする方策$\pi_{\rm{init}}$を用いる.ただし, $a_{0.001}^{*}(s)$はシステム\eqref{pendulum}を,離散化幅$\delta_t=0.001$として離散化したシステムを原点付近で安定化する制御則として与える.
 
-\section{安全性の定義}
-\subsection{インタラクション間隔$\tau$の安全性}
-ECBF(後から書きます)
-
-
-\subsection{入力信号$a$の安全性}
-強化学習ではデータの収集に環境とのインタラクションを行う必要がある. DDPGと呼ばれるアルゴリズムは方策オン型の強化学習とよばれ, データの収集方策に学習中の暫定最適方策を用いる. したがって,学習初期の方策では安全性が保証されないことがしばしばある. この課題を解決するために, 制御バリア関数を用いる. \par
-関数$h(s)$が以下の条件を満たす時, システム(\ref{continuous})に対する制御バリア関数であるという. 
-\begin{equation}
-	\sup_{a\in A}\left\{\pdif{h}{s}(f(s)+g(s)a)+K(h(s))\right\} \geq 0 \label{CBF}
-\end{equation}
-ただし, $K(s)$はクラスK関数である.\par
-さて, 2.2節にて登場した安全領域$\mathcal{C}$を
-\begin{equation}
-	\mathcal{C} = \left\{s \in S~|~h(s)\geq 0\right\}
-\end{equation}
-として与える. このとき$h(s)$が制御バリア関数であるならば, 状態$s\in C$を初期状態とした時, それ以降の全時刻において, 状態$s$が$s\in C$を満たすようにする入力が存在することを保証する. そのような入力集合は現時刻での状態$s$に依存し,
-\begin{equation}
-	U(s) = \left\{a \in A~|~\pdif{h}{s}(f(s)+g(s)a)+K(h(s))\geq 0\right\}, \forall s\in C
-\end{equation}
-としてその集合を与える.\par
-学習中の安全性を確保するために, 図2のようにエージェントの出力を$U(s)$の要素に射影するレイヤーを設ける.
+\subsection{学習の様子からみる勾配法の進捗の確認}
+式\eqref{reward}より, $\tau$を大きくするモチベーションは$\lambda$に大きく依存するため, それを様々な値にすることでど学習過程にどのような変化が見られるのかを確認してみた. ここでは,~$\lambda$を$0.05, 0.5, 5, 50$に設定し, それぞれ3回, 200000ステップ(インタラクションの回数)の強化学習を行った. また,~$\tau$は$0.001\sim0.1$の範囲に制限している.\par
+まずそれぞれの学習タスクの中で, 1エピソードの間の$\tau$の平均値の変化を見てみる.\par
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=10cm]{barrier_certificate.png}
- 	\caption{制御系} \label{cbf}
-\end{figure}\\
-当面は, エージェントの出力$a_{\pi}$に最も近い$U(s)$の元への射影を考える.
-
-
-
-\section{今後の方針}
-\subsection{シミュレーション環境の構築}
-さて, 制御バリア関数による安全性保証は連続システムに対して行われるものである. また, セルフトリガー制御則の第2成分$\tau$の出力ロジックを勾配によって更新できるように, $\tau$を連続値として扱う必要がある. しかし, コンピュータ上でシミュレーションを行うには(\ref{continuous})を時間に関して離散化を行わなくてはならない.\par
-そこで, インタラクション間隔$\tau$を整数個に等間隔に分割し, その時間幅を用いて離散化を行う. この時, 離散化幅は$0.001(s)\sim 0.005(s)$になるように分割数を調整する. $\delta_t$を上から抑える理由は離散化誤差を抑えるためである. ($\tau$を)下から抑えるのは,コンピュータ上で$\frac{1}{\infty}=0$となってしまうからで, それを回避するためである.\par
-ここで, 式(\ref{reward})のインターバル報酬$C^{\pi}_i$が定積分を用いて表されているため, これをシミュレーション環境で近似する手法を考える. ダイナミクス(\ref{continuous})の離散化幅$\delta_t$の離散近似システムが
-\begin{equation}
-	s_{t+1} = f_d(s_t, \delta_t) + g_d(s_t, \delta_t)a_t
-\end{equation}
-と書かれているとする. インタラクション間隔$\tau$を$N$分割した時, $\delta_t = \frac{\tau}{N}$を用いて
-\begin{equation}
-	C^{\pi}_i \approx -\delta_t\sum_{k=0}^{N}s_{n_i+k}^{\top}Qs_{n_i+k}+\tau_ia_i^{\top}Ra_i + \lambda \tau_i
-\end{equation}
-と近似する. ここで$s_{n_i}$は$i$回目のインタラクションを行った瞬間の状態変数$s(T_i)$と同じ値が代入されるものとする.\par
-
-\subsection{サンプル値系での安全性確保ロジックの構築}
-2.3節で記述した通り, $t_{\textrm{int}}$が$0.001(s)$の最適方策$\pi_{\textrm{sample},1}$を初期値として,~$0.002(s)$の最適方策$\pi_{\textrm{sample},2}$を安全強化学習できるのか検証する. 本節ではその安全性の確保方法についてもう少し掘り下げて議論する.\par
-ECBFを用いることによって, 入力$a$に対するインタラクション間隔$\tau$の限界を与えることができる. その値を$\tau_{\textrm{max}}(a)$と書く. もし$\tau_{\textrm{max}}(a)<0.002$であるなら, CBFを用いて$U(s)$の元$a_{\textrm{safe}}$を選び$\tau_{\textrm{max}}(a_{\textrm{safe}})\geq0.002$となれば, 次のインタラクションまで$a_{\textrm{safe}}$を加え続けても状態変数が$\mathcal{C}$を出ていくことはない.しかし$\forall a \in U(s)$に対して$\tau_{\textrm{max}}(a)<0.002$であるなら, 次のインタラクションを$0.001(s)$後に行うことで, 安全性を確保する必要がある. ~($0.001\leq\tau_{\textrm{max}}(a)<0.002$を仮定)\par
-ここまでの議論を整理すると, 「サンプル値系における安全性保証」とは「1. 入力信号の安全性,~2. サンプル間隔の安全性」を保証することになる. これらが行われることを回避する学習方法については今後検討する.
-
-
-\section{セルフトリガー制御の強化学習}
-
-\subsection{問題設定の再確認}
-式\eqref{pi_init}で表される方策を初期方策として, 式\eqref{optimal_policy}で表される最適方策を学習したい. その際CBFやECBFを用いて安全性を確保する. そのために以下のものがGivenであると仮定する.
-\begin{itemize}
-\item 初期方策$\pi_{\textrm{init}}$ %LQRじゃ良くなさそう
-\item 安全領域$\mathcal{C}$, システム\eqref{continuous} 指数制御バリア関数ECBF: $h(\mathcal{C})\geq0$
-\end{itemize}
-
-\subsection{安全確保手法}
-学習中(データ収集中),~$\pi(s)=\begin{bmatrix}a & \tau\end{bmatrix}$と出力された場合を考える. ECBFを用いると, 状態$s$が安全領域$\mathcal{C}$を出ていかないための, 入力$a$を加え続けられる最大の時間$\tau_{\textrm{max}}(a)$を与えることができる. 次のインタラクションまでの時間間隔を$\min\{\tau, \tau_{\textrm{max}}(a)\}$とすることで, 安全性を確保する.
-
-\subsection{生じると予想される課題点}
-\subsubsection{$\mathcal{C}$内での経験の均一性}
-方策$\pi$の正しい改善にはcriticネットワークの出力である$Q^{\pi}$の近似精度が必要不可欠である. また, DDPGはoff-policyアルゴリズムであり, 過去のデータを保存したexperience replayから作成したミニバッチを用いてcriticの更新に用いるTD誤差の計算を行う. 安全強化学習においては, $\mathcal{C}$の縁での挙動が重要であるため, 作成するミニバッチには原点付近の$(s,a)$に偏らずに, 状態変数に対して満遍なく含まれることが望ましい. 現状はexperience replayから等確率でミニバッチを作成しているので, {$\mathcal{C}$の縁での経験が少なく, 原点付近ばかりを経験していると, $\mathcal{C}$の縁付近での$Q^{\pi}$は近似精度は高くないことが予想される. \par
-そこで, experience replayを原点付近の$s$と, $\mathcal{C}$の縁付近とで分けて, 均等にミニバッチを作成するのはどうかと考える. %その辺機械学習屋さんはどう考えてるのか
-
-\subsubsection{シミュレーションの離散化による影響}
-要検討
-
-\section{セルフトリガー制御の強化学習特有の特徴に関する調査}
-\subsection{準備: criticの学習速度の確認}
-actorネットワークのパラメータは, 以下の方策勾配を用いて更新される.
-\begin{equation}
-	\nabla_{\theta^{\mu}}J(\theta^{\mu}) = \expect_{s\sim \rho^{\theta^{\mu}}}[\nabla_{\theta^{\mu}}\mu(s|\theta^{\mu})\nabla_aQ^{\theta^{\mu}(s,a)}|_{a=\mu(s|\theta^{\mu})}] \label{true_policy_gradient}
-\end{equation}
-ここで, ~$ \rho^{\theta^{\mu}}(s)=\int_{S}\sum_{t=0}^{\infty}\gamma^td_0(s_0)\textrm{Pr}(s_0\to s, k,  \theta^{\mu})\textrm{d}s_0$は, 割引分布という(時間割引された,全時刻における状態$s$の出現割合みたいなもの(?)). \par
-式\eqref{true_policy_gradient}から, $Q^{\theta^{\mu}}$が既知でなくては, 正しい方策勾配が計算できないことがわかる. actor-criticはpolicy iterationアルゴリズムの1つであり, 方策$\mu$の更新と$Q^{\mu}$を交互に更新し続ける. DDPGではactorとcriticを1ステップにつき1回のみ更新する(つまり, criticの収束を待たずして次のステップに進む). そこで, actorを固定したときに, 実際にはcriticの学習にはどの程度のステップ数が必要なのかを知っておきたく, その実験を行った.\par
-ここでは, 3つの方策$\mu_{i}$に対する$Q^{\mu}$の学習を実験する.ただし
-\begin{align}
-	\pi_1(s) &= \begin{bmatrix}\textrm{lqr}_{0.001}(s) \\ 0.001 \end{bmatrix} \\
-	\pi_2(s) &= \begin{bmatrix}\textrm{lqr}_{0.005}(s) \\ 0.1 \end{bmatrix} \\
-	\pi_3(s) &= \begin{bmatrix}\textrm a(s) \\ \tau(s) \end{bmatrix} \\
-\end{align}
-とする. ($\pi_3$に関しては,完全にランダムに初期化をしたNNで表現する,という意味で記載した.) \par
-学習は$\theta\in[-\pi, \pi], \dot{\theta}\in[-\pi,\pi]$を50000点発生させて, $\{s, \mu_i(s), r, s^{\prime}\}$の組を保存したreplay bufferからmini batchを作成して行った. その時のloss(mini batchのTD誤差の平均)の値の変化を追った時のプロットを図\ref{critic_loss}に示す.\\
+ 	\includegraphics[width=14cm]{tau_exp_ave.png}
+ 	\caption{学習を通しての$\tau$の変化} \label{average_tau}
+\end{figure}\par
+ここで注意したいのは, $\tau$によって200000回のインタラクションに含まれるエピソード数が異なる点である. 例えば$\tau$の学習が進まずにずっと$\tau=0.001$であった場合, 10秒間の制御の間には10000回のインタラクションが行われる. したがって200000回のインタラクションの間には20エピソードしか含まれない. 逆に, 初期から$\tau$の学習が進み$\tau=0.1$となることが増えてくると, エピソード数は増えてくる. 図\ref{average_tau}の$x$軸の範囲が異なるのはそのためである. \par
+図\ref{average_tau}をみると, 勾配法の収束は(200000ステップの間は)見ることができない. このことから, 近似勾配$g=\frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}]$のノルムの200000ステップの間の変化を見てみる. 
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=15cm]{critic_loss.png}
- 	\caption{criticの学習} \label{critic_loss}
-\end{figure}\\
-図\ref{critic_loss}より, 方策によって学習の様子が全く異なることが見てとれる.問題なのは$\pi_3$の学習で, これはlossが指数的に発散している. 学習率は他の2つに比べてかなり小さく取っての結果なので, 原因は最適化アルゴリズム以外にあると考える.
+ 	\includegraphics[width=14cm]{gradient_log.png}
+ 	\caption{学習を通しての$\|g\|$の変化} \label{gradient_log}
+\end{figure}\par
+図\ref{gradient_log}をみると, 勾配のノルム$\|g\|$は収束していない. また, 100000ステップあたりで突然大きな勾配になっていることがわかる. 以下では, このような問題が生じている原因について検討していく.
 
-\subsection{方策勾配の大きさによる, 入力信号$a$と通信間隔$\tau$の学習率の考察}
+\subsection{勾配法が収束しない原因の検討}
+2.4節で示したDDPGのアルゴリズム自体の問題点以外に, 前節の問題点の原因となる候補を考察する. \par
+まず1つ目として,~$Q$関数の近似が正しく行えていないことが考えられる. actorの更新には
+\begin{equation*}
+	g=\frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}]
+\end{equation*}
+が用いられるため,~$Q$関数の近似精度は必要不可欠である. しかしながら, DDPGでは各ステップにおける方策$\pi_{\theta_k}$に対する$Q^{\pi_{\theta_k}}$の学習が収束する前に次ステップに進む場合があり, この場合は間違った方向にactorの更新がなされることになる.\par
+
+2つ目に, 正しい方策勾配\eqref{true_pg}がパラメータ空間上で非常に変化が激しい領域がある可能性があることである. 図\ref{gradient_log}をみると, 一度近似勾配$g$のノルムが小さくなった後再び大きくなっている. もしノルムが小さくなっているステップ周辺での$Q$関数が正しく近似されており, replay buffer の分布が$\rho^{\pi_{\theta_k}}$に近いのならば,用いられた勾配は正しい値となる.これが急激に大きくなっているのなら, その場合のステップサイズを小さくしておく必要がある. また, 方策が大きく変化するとcriticのパラメータ$\omega$の再学習も必要となり, 1つ目の問題点の影響を受けることになる.\par
+
+\section{課題点抽出}
+前節で行った考察より, まず方策勾配を解析的に計算してパラメータ空間上で急峻な変化をもつ構造かどうかを確認する. もし予想の通りであれば, そのパラメータ付近で意図的にステップサイズを小さくする手法を考案する.逆に, 急峻となる構造でないのならば,~replay bufferのデータの分布に問題があるということになり, システムとのインタラクション方法について考察する必要がある.\par
+方策勾配の解析的な計算についてであるが, 図\ref{gradient_log}に見られた問題点は, 最適セルフトリガー制御の強化学習に特有の特徴であったため,~$\nabla_{\theta^a}J(\pi_{\theta}),~\nabla_{\theta_{\tau}}J(\pi_{\theta})$についてそれぞれ計算を行いたいと考えている. \par
+
+\section{方策勾配の大きさによる, 入力信号$a$と通信間隔$\tau$の学習率の考察}
 図\ref{split_NN}のようにactorネットワークを, ~$a(s)$と$\tau(s)$を分離したモデルとして用いる. 
 \begin{figure}[h]
 	\centering
@@ -273,7 +243,7 @@ $\pi_2$での値は,
 \subsection{注意}
 $\nabla_{\theta^{\tau}}\mu(s|\theta^{\mu})$,~$\nabla_{\theta^{a}}\mu(s|\theta^{\mu})$に関しては, ニューラルネットワークモデルの設定にしか依存しないものなので, 今回は特段着目しない.
 
-\subsection{漸化式の第1項目について}
+\subsection{各ステップの報酬のパラメータ勾配}
 初めに, 漸化式\eqref{recurrence_tau}の右辺第1項に関して考察する.~$T$を各インターバルの開始時刻だとすると, 
 \begin{align}
 	\nabla_{\tau}r(s, u)|_{u=\mu(s|\theta^{\mu})} &= -\nabla_{\tau}\int_{T}^{T+\tau} s(t)^{\top}Qs(t)\textrm{d}t - \nabla_{\tau}(\tau a^{\top}Ra) + \nabla_{\tau}(\lambda\tau) \nonumber\\
@@ -310,28 +280,46 @@ $\nabla_{\theta^{\tau}}\mu(s|\theta^{\mu})$,~$\nabla_{\theta^{a}}\mu(s|\theta^{\
 と書けるため, 式\eqref{reward_tau_gradient}, \eqref{reward_a_gradient}に代入すれば全ステップでの$r$の勾配は, 関数$V$の引数$s$の関数として表せる. ただし,~$T_i = \sum_{i=0}^{n-1}\tau(s^{(i)}(s))$である. 
 
 
-\subsection{漸化式の第2項目について}
-各漸化式の第2項目には確率密度関数の勾配が存在しており, 遷移が確定的である場合にどう扱えば良いのかわかりませんでした...
+\section{勾配計算}
+評価関数$J(\theta^{\mu})=\expect_{s_0\sim d_0}[V^{\theta^{\mu}}(s_0)]$であることから$\nabla_{\theta^{\mu}}J(\theta^{\mu})=\int_{S}d_0(s)\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s)\textrm{d}s$なので, まず$\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s_0)$について詳しくみていく. 価値関数$V^{\theta^{\mu}}(s)$の定義から, 
+\begin{equation}
+	\nabla_{\theta^{\pi}}V^{\theta^{\pi}}(s_0) = \nabla_{\theta^{\pi}}\sum_{i=0}^{\infty}\gamma^{i}r(s_i, \pi(s_i|\theta^{\pi}))\label{first_step}
+\end{equation}
+と書ける. ただし$s_i$は$i$回目のインタラクションの開始時刻における状態変数の値である. もちろん全ての$i$に対して, これは初期状態$s_0$, パラメータ$\theta^{\tau}, \theta^a$に対して一意に定まる量であるので, 
+\begin{equation}
+	s_i = \mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i)
+\end{equation}
+のように関数$\mathcal{S}$を用いて表す. また, 各ステップ内での状態変化を記述するために関数$\chi_i(t)$を導入する. これはステップの開始時刻を0と見た時の, そのステップの中での状態変化を表す.したがって$\chi_i(0) = s_i, \chi_i(\tau(s_i))=\chi_{i+1}(0)=s_{i+1}$となる. これを用いると, 各ステップの開始時刻での状態$s_i$は次のように書ける.
+\begin{equation}
+	\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i) = s_0 + \sum_{t=0}^{i}\int_{0}^{\tau(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, t)|\theta^{\tau})}\left\{f(\chi_t(l))+g(\chi_t(l))a(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, t)|\theta^a)\right\}\textrm{d}l \label{step_state}
+\end{equation}
+さて, 式\eqref{first_step}に話を戻し, もう少し計算を進めていく. ここでは微分を$\theta^{\pi}$の一部のパラメータ($\theta$を用いて表す)で行う.
+\begin{align}
+	\nabla_{\theta}V^{\theta^{\pi}}(s_0) &= \nabla_{\theta}\sum_{i=0}^{\infty}\gamma^{i}r(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i), \pi(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i)|\theta^{\tau}, \theta^a)) \\
+	&= \sum_{i=0}^{\infty}\gamma^{i}\nabla_{\theta}r(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i), \pi(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i)|\theta^{\tau}, \theta^a)) \\
+	&= \sum_{i=0}^{\infty}\gamma^{i}\nabla_{\theta}r(s_i, \pi(s_i|\theta^{\tau}, \theta^a))\\
+	&= \sum_{i=0}^{\infty}\gamma^{i}\left\{\nabla_{\theta}s_i\nabla_{s}r(s, \pi(s_i|\theta^{\tau}, \theta^a))|_{s=s_i}+\nabla_{\theta}\pi(s_i|\theta^{\tau}, \theta^a)\nabla_{a}r(s_i, a)|_{a=\pi(s_i|\theta^{\tau}, \theta^a)}\right\}\\
+	&= \sum_{i=0}^{\infty}\gamma^{i}\{\nabla_{\theta}s_i\nabla_{s}r(s, \pi(s_i|\theta^{\tau}, \theta^a))|_{s=s_i}\\
+	&\hspace{7ex}+[\nabla_{\theta}\pi(s|\theta^{\tau}, \theta^a)+\nabla_{\theta}s_i\nabla_{s}\pi(s|\theta^{\tau}, \theta^a)]_{s=s_i}\nabla_{a}r(s_i, a)|_{a=\pi(s_i|\theta^{\tau}, \theta^a)}\}\label{devide_grad}
+\end{align}
+のように計算できる. ただし, (39)と(40)は簡単のため$s_i$を簡素化して書いただけである. したがって,方策勾配は
+\begin{align}
+	\nabla_{\theta}J(\theta^{\tau}, \theta^a) &= \int_{S}d(s_0)\sum_{i=0}^{\infty}\gamma^{i}\{\nabla_{\theta}s_i\nabla_{s}r(s, \pi(s_i|\theta^{\tau}, \theta^a))|_{s=s_i}\nonumber\\
+	&\hspace{5ex}+[\nabla_{\theta}\pi(s|\theta^{\tau}, \theta^a)+\nabla_{\theta}s_i\nabla_{s}\pi(s|\theta^{\tau}, \theta^a)]_{s=s_i}\nabla_{a}r(s_i, a)|_{a=\pi(s_i|\theta^{\tau}, \theta^a)}\}\mathrm{d}s_0\label{detail_pg}
+\end{align}
+と書ける. これは$\theta^{\tau}, \theta^a$の関数である. \par
+研究会で議論したように,~actorのパラメータ空間$\theta^a, \theta^{\tau}$において方策勾配$\nabla_{\theta^a}J(\theta^a, \theta^{\tau}), \nabla_{\theta^{\tau}}J(\theta^a, \theta^{\tau})$が急激に変化する構造(勾配法にとってイヤな構造)となっているのでないかと予想した.方策勾配を$\theta^a, \theta^{\tau}$の関数として与えることができたので, パラメータ空間$\theta^a, \theta^{\tau}$において急峻となる構造になっているのかを確認していきたい.それについて困っている点を次節に記す.
 
+\subsection{困っている点}
+1つ目の悩みの種は,~$\nabla_{\theta}s_i$である. $s_i$は式\eqref{step_state}より, この$\theta$に関する勾配が非常に煩雑なものとなるので評価を行いづらくなってしまう. \par
+$\nabla_{\theta}s_i$の煩雑性の他にも, 式\eqref{detail_pg}をどのように評価するべきかの見当がついていないという点である. 式\eqref{detail_pg}は, $\theta^a, \theta^{\tau}$の関数となっているが他変数関数となるので, 可視化することはできない.
 
-% comment
 \if0
-考えているのは\eqref{continuous}のような確定系なので,~$\textrm{Pr}(s^{\prime}|s, u)$が何に置き換わるのかを考えています.
+\subsection{修論の見通し}
+研究会で議論したように,~actorのパラメータ空間$\theta^a, \theta^{\tau}$において方策勾配$\nabla_{\theta^a}J(\theta^a, \theta^{\tau}), \nabla_{\theta^{\tau}}J(\theta^a, \theta^{\tau})$が急激に変化する構造(勾配法にとってイヤな構造)となっているのでないかと予想した. 式\eqref{devide_grad}のように方策勾配が分離でき,~$\theta^a, \theta^{\tau}$の関数として与えることができたので, どちらかがパラメータ空間$\theta^a, \theta^{\tau}$において急峻となる構造になっているのかを確認していく. 問題特有の構造を見出したいため, まずは$\mathcal{P}_i$について検証する. \par
+もし,~$\mathcal{P}_i$が急峻でないならば, 学習手法の調整を正しくすれば強化学習できることの証左を与えることができる. 逆に~$\mathcal{P}_i$が急峻である領域があるのならば, その領域に探索中のパラメータが入った際に極端に学習率を落とすような理論を考える. \par
+その検証に向けて困っている点を次節にまとめる.
 \fi
-
-\begin{align*}
-	\nabla_{\theta}V^{\theta}(s) &= \nabla_{\theta}[r(s, \mu(s|\theta))+\gamma V^{\theta}(s^{\prime}(\theta))] \\
-	&= \nabla_{\theta}r(s, \mu(s|\theta)) + \gamma\nabla_{\theta}V^{\theta}(s^{\prime}(\theta)) \\
-	~\\
-	\nabla_{\theta}V^{\theta}(s^{\prime}(\theta)) &=  \lim_{h\to0} \frac{V^{\theta+h}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta))}{h} \\
-	&= \lim_{h\to0}\left\{\frac{V^{\theta+h}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta+h))}{h} + \frac{V^{\theta}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta))}{h}\right\} \\
-	&= \lim_{h\to0}\frac{V^{\theta+h}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta+h))}{h} + \lim_{h\to0}\frac{V^{\theta}(s^{\prime}(\theta+h)) - V^{\theta}(s^{\prime}(\theta))}{h} \\
-	&= \nabla_{\theta}V^{\theta}(s^{\prime})|_{s^{\prime}=s^{\prime}(\theta)} + \nabla_{s^{\prime}}V^{\theta}(s^{\prime})\nabla_{\theta}s^{\prime}(\theta)
-\end{align*}
-
-
-
-
 
 \begin{thebibliography}{10}
 \bibitem{ECBF}
