@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 11.2}}}
+\title{\large{\bf{進捗報告 11.9}}}
 \author{M2 竹内 維吹}
 \date{\today}
 \begin{document}
@@ -82,7 +82,7 @@ Silverら\cite{DPG}は, 方策が$\pi(s)$のように決定論的に定めるも
 \end{align}
 ただし, 
 \begin{equation}
-	\rho^{\pi}(s) = \int_{S}\sum_{t=0}^{\infty}\gamma^td_0(s_0)\textrm{Pr}(s_0\to s, t,  \pi)\textrm{d}s_0
+	\rho^{\pi}(s) = \int_{S}\sum_{t=0}^{\infty}\gamma^td_0(s_0)\textrm{Pr}(s_0\to s, t,  \pi)\textrm{d}s_0 \label{d_dis}
 \end{equation}
 を割引分布という.\par
 この方策勾配を深層強化学習の枠組みに取り入れたアルゴリズムがDDPG(Deep DPG)\cite{DDPG}である.これはActor-Critic構造を採用しており,~$Q^{\pi_{\theta}}$を近似するcriticネットワーク$Q(s,a|\omega)$と,方策$\pi$を表現するactorネットワーク$\pi(s|\theta)=\pi_{\theta}$をそれぞれ学習する手法である. 以下に,この近似勾配を用いたactorとcriticの更新アルゴリズムを記す.\par
@@ -92,7 +92,7 @@ DDPGはミニバッチ学習を用いる. 過去の経験データ$(s_t, a_t, r_
 \end{equation}
 が最小となる方向に$\omega$を更新する. 全ての$(s,a)$についてこれを一度に行うことはできないので, 作成したミニバッチ$E$に対する平均二乗誤差
 \begin{equation}
-	Loss = \frac{1}{N}\sum_{s\in E} \textrm{TD}^2
+	Loss = \frac{1}{N}\sum_{s\in E} \textrm{TD}^2 \label{critic_loss}
 \end{equation}
 をLoss関数として, このLoss関数を減らすようにアルゴリズムを働かせる. \par
 さて, 上記のcriticの更新方法は教師あり学習そのものである. 従ってミニバッチに含まれるデータはi.i.d.であることが要求される. もしミニバッチ$E$がエージェントが経験した直近の$N$ステップのデータを用いると, これらは独立ではなくなってしまう. 従って, エージェントは環境とのインタラクションによって得られた経験データをexperience replayに保存しておき, そこから無作為に$N$このデータを選びとる手法でデータの分散を上げている.\par
@@ -102,7 +102,7 @@ DDPGはミニバッチ学習を用いる. 過去の経験データ$(s_t, a_t, r_
 \end{equation}
 のようにcriticネットワークを用いて近似した方策勾配を用いる. さらに, 期待値に関して, 
 \begin{equation}
-	\expect_{s\sim\rho^{\pi}}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] \simeq \frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}]
+	\expect_{s\sim\rho^{\pi}}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] \simeq \frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] \label{sample_approximation_for_pg}
 \end{equation}
 という近似も行っている. 従って, この近似勾配$g=\frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}]$はcriticの近似精度とミニバッチの分布によって大きく性能を落としてしまう可能性があり, 大きな問題点であると言える.
 
@@ -280,46 +280,75 @@ $\nabla_{\theta^{\tau}}\mu(s|\theta^{\mu})$,~$\nabla_{\theta^{a}}\mu(s|\theta^{\
 と書けるため, 式\eqref{reward_tau_gradient}, \eqref{reward_a_gradient}に代入すれば全ステップでの$r$の勾配は, 関数$V$の引数$s$の関数として表せる. ただし,~$T_i = \sum_{i=0}^{n-1}\tau(s^{(i)}(s))$である. 
 
 
-\section{勾配計算}
-評価関数$J(\theta^{\mu})=\expect_{s_0\sim d_0}[V^{\theta^{\mu}}(s_0)]$であることから$\nabla_{\theta^{\mu}}J(\theta^{\mu})=\int_{S}d_0(s)\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s)\textrm{d}s$なので, まず$\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s_0)$について詳しくみていく. 価値関数$V^{\theta^{\mu}}(s)$の定義から, 
-\begin{equation}
-	\nabla_{\theta^{\pi}}V^{\theta^{\pi}}(s_0) = \nabla_{\theta^{\pi}}\sum_{i=0}^{\infty}\gamma^{i}r(s_i, \pi(s_i|\theta^{\pi}))\label{first_step}
-\end{equation}
-と書ける. ただし$s_i$は$i$回目のインタラクションの開始時刻における状態変数の値である. もちろん全ての$i$に対して, これは初期状態$s_0$, パラメータ$\theta^{\tau}, \theta^a$に対して一意に定まる量であるので, 
-\begin{equation}
-	s_i = \mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i)
-\end{equation}
-のように関数$\mathcal{S}$を用いて表す. また, 各ステップ内での状態変化を記述するために関数$\chi_i(t)$を導入する. これはステップの開始時刻を0と見た時の, そのステップの中での状態変化を表す.したがって$\chi_i(0) = s_i, \chi_i(\tau(s_i))=\chi_{i+1}(0)=s_{i+1}$となる. これを用いると, 各ステップの開始時刻での状態$s_i$は次のように書ける.
-\begin{equation}
-	\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i) = s_0 + \sum_{t=0}^{i}\int_{0}^{\tau(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, t)|\theta^{\tau})}\left\{f(\chi_t(l))+g(\chi_t(l))a(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, t)|\theta^a)\right\}\textrm{d}l \label{step_state}
-\end{equation}
-さて, 式\eqref{first_step}に話を戻し, もう少し計算を進めていく. ここでは微分を$\theta^{\pi}$の一部のパラメータ($\theta$を用いて表す)で行う.
+\section{修論の見通し}
+方策勾配は
 \begin{align}
-	\nabla_{\theta}V^{\theta^{\pi}}(s_0) &= \nabla_{\theta}\sum_{i=0}^{\infty}\gamma^{i}r(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i), \pi(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i)|\theta^{\tau}, \theta^a)) \\
-	&= \sum_{i=0}^{\infty}\gamma^{i}\nabla_{\theta}r(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i), \pi(\mathcal{S}(s_0, \theta^{\tau}, \theta^{a}, i)|\theta^{\tau}, \theta^a)) \\
-	&= \sum_{i=0}^{\infty}\gamma^{i}\nabla_{\theta}r(s_i, \pi(s_i|\theta^{\tau}, \theta^a))\\
-	&= \sum_{i=0}^{\infty}\gamma^{i}\left\{\nabla_{\theta}s_i\nabla_{s}r(s, \pi(s_i|\theta^{\tau}, \theta^a))|_{s=s_i}+\nabla_{\theta}\pi(s_i|\theta^{\tau}, \theta^a)\nabla_{a}r(s_i, a)|_{a=\pi(s_i|\theta^{\tau}, \theta^a)}\right\}\\
-	&= \sum_{i=0}^{\infty}\gamma^{i}\{\nabla_{\theta}s_i\nabla_{s}r(s, \pi(s_i|\theta^{\tau}, \theta^a))|_{s=s_i}\\
-	&\hspace{7ex}+[\nabla_{\theta}\pi(s|\theta^{\tau}, \theta^a)+\nabla_{\theta}s_i\nabla_{s}\pi(s|\theta^{\tau}, \theta^a)]_{s=s_i}\nabla_{a}r(s_i, a)|_{a=\pi(s_i|\theta^{\tau}, \theta^a)}\}\label{devide_grad}
+	\nabla_{\theta^{\pi}}J(\theta^{\pi}) &= \expect_{s\sim\rho^{\pi^{\theta^{\pi}}}}[
+	\nabla_{\theta^{\pi}}\pi(s|\theta^{\pi})\nabla_{u}Q^{\theta^{\pi}}(s, u)|_{u=\pi(s|\theta^{\pi})}] 
 \end{align}
-のように計算できる. ただし, (39)と(40)は簡単のため$s_i$を簡素化して書いただけである. したがって,方策勾配は
+と書けるのであった. 入力アフィン系のセルフトリガー制御に対象を絞ることにより, $Q^{\pi}(s,a)$を解析にかけることを活用して, $\nabla_{\theta^{\pi}}J(\theta^{\pi})$の大きさや形を解析し, 勾配法の設定方法についての理論を構築していきたい. \par
+本研究では方策$\pi$を図\ref{split_NN}のように$a,\tau$をそれぞれ別のモデルに分離していたことから, それぞれのモデルに対する方策勾配は
 \begin{align}
-	\nabla_{\theta}J(\theta^{\tau}, \theta^a) &= \int_{S}d(s_0)\sum_{i=0}^{\infty}\gamma^{i}\{\nabla_{\theta}s_i\nabla_{s}r(s, \pi(s_i|\theta^{\tau}, \theta^a))|_{s=s_i}\nonumber\\
-	&\hspace{5ex}+[\nabla_{\theta}\pi(s|\theta^{\tau}, \theta^a)+\nabla_{\theta}s_i\nabla_{s}\pi(s|\theta^{\tau}, \theta^a)]_{s=s_i}\nabla_{a}r(s_i, a)|_{a=\pi(s_i|\theta^{\tau}, \theta^a)}\}\mathrm{d}s_0\label{detail_pg}
+	\nabla_{\theta^{\tau}}J(\theta^{\pi}) &= \expect_{s\sim\rho^{\pi^{\theta^{\pi}}}}[
+	\nabla_{\theta^{\tau}}\tau(s|\theta^{\tau})\nabla_{\tau}Q^{\theta^{\pi}}(s, a, \tau)|_{a=a(s|\theta^a), \tau=\tau(s|\theta^{\tau})}] \label{tau_gradient}\\
+	\nabla_{\theta^{a}}J(\theta^{\pi}) &= \expect_{s\sim\rho^{\pi^{\theta^{\pi}}}}[
+	\nabla_{\theta^{a}}a(s|\theta^{a})\nabla_{a}Q^{\theta^{\pi}}(s, a, \tau)|_{a=a(s|\theta^a),\tau=\tau(s|\theta^{\tau})}] \label{a_gradient}
 \end{align}
-と書ける. これは$\theta^{\tau}, \theta^a$の関数である. \par
-研究会で議論したように,~actorのパラメータ空間$\theta^a, \theta^{\tau}$において方策勾配$\nabla_{\theta^a}J(\theta^a, \theta^{\tau}), \nabla_{\theta^{\tau}}J(\theta^a, \theta^{\tau})$が急激に変化する構造(勾配法にとってイヤな構造)となっているのでないかと予想した.方策勾配を$\theta^a, \theta^{\tau}$の関数として与えることができたので, パラメータ空間$\theta^a, \theta^{\tau}$において急峻となる構造になっているのかを確認していきたい.それについて困っている点を次節に記す.
-
-\subsection{困っている点}
-1つ目の悩みの種は,~$\nabla_{\theta}s_i$である. $s_i$は式\eqref{step_state}より, この$\theta$に関する勾配が非常に煩雑なものとなるので評価を行いづらくなってしまう. \par
-$\nabla_{\theta}s_i$の煩雑性の他にも, 式\eqref{detail_pg}をどのように評価するべきかの見当がついていないという点である. 式\eqref{detail_pg}は, $\theta^a, \theta^{\tau}$の関数となっているが他変数関数となるので, 可視化することはできない.
-
+とそれぞれ書ける. 式\eqref{tau_gradient}, \eqref{a_gradient}の中で問題の特有性を活かせるのは第2項目($Q$関数の勾配)であるためこれに着目したい.
 \if0
-\subsection{修論の見通し}
-研究会で議論したように,~actorのパラメータ空間$\theta^a, \theta^{\tau}$において方策勾配$\nabla_{\theta^a}J(\theta^a, \theta^{\tau}), \nabla_{\theta^{\tau}}J(\theta^a, \theta^{\tau})$が急激に変化する構造(勾配法にとってイヤな構造)となっているのでないかと予想した. 式\eqref{devide_grad}のように方策勾配が分離でき,~$\theta^a, \theta^{\tau}$の関数として与えることができたので, どちらかがパラメータ空間$\theta^a, \theta^{\tau}$において急峻となる構造になっているのかを確認していく. 問題特有の構造を見出したいため, まずは$\mathcal{P}_i$について検証する. \par
-もし,~$\mathcal{P}_i$が急峻でないならば, 学習手法の調整を正しくすれば強化学習できることの証左を与えることができる. 逆に~$\mathcal{P}_i$が急峻である領域があるのならば, その領域に探索中のパラメータが入った際に極端に学習率を落とすような理論を考える. \par
-その検証に向けて困っている点を次節にまとめる.
+しかしながら, 引数$s,a,\tau$にそれぞれ$\theta^{\pi}$によって決定付けられる数値を代入した後の性質は, 方策近似モデル依存の性質になってしまうため, ニューラルネットワークの構築方法などの議論を回避するには$s,a,\tau,\theta^{\pi}$によらない性質を考えるべきである.\par
 \fi
+たとえば,~$\nabla_{\tau}Q^{\theta^{\pi}}(s, a, \tau)|_{a=a(s|\theta^a), \tau=\tau(s|\theta^{\tau})}や\nabla_{a}Q^{\theta^{\pi}}(s, a, \tau)|_{a=a(s|\theta^a), \tau=\tau(s|\theta^{\tau})}$のある程度の形がわかれば, この問題に適したオプティマイザが何なのかを特徴付けることができるかも知れない. しかしながら, 
+\begin{align}
+	\nabla_{\tau}Q^{\theta^{\pi}}(s, a, \tau) &= \nabla_{\tau}[r(s,a,\tau)+\gamma s^{\prime}(s,a,\tau)\nabla_{s}V^{\theta^{\pi}}(s)|_{s=s^{\prime}(s,a,\tau)}]\\
+	\nabla_{a}Q^{\theta^{\pi}}(s, a, \tau) &= \nabla_{a}[r(s,a,\tau)+\gamma s^{\prime}(s,a,\tau)\nabla_{s}V^{\theta^{\pi}}(s)|_{s=s^{\prime}(s,a,\tau)}]
+\end{align}
+であり, 両方に共通している$\nabla_{s}V^{\theta^{\pi}}(s)|_{s=s^{\prime}(s,a,\tau)}$についての計算結果が非常に煩雑で, どのような形になるのか評価方法がわかりません. \par
+また, ~$Q$関数が方策依存の関数であるため,方策近似モデルであるニューラルネットワークに関する仮定をおかないと議論を進めることができない.そのため, 強い仮定をおいてしまうことになるがその方向で議論を進めていこうと思います.
+
+\section{イベントトリガーとセルフトリガーの違いについての考察}
+最適イベントトリガー制御問題に対するDDPGは工夫なく(通信の有無を2つの連続値の大小を真偽値とするのが工夫なのかも知れないが)適用しても最適解を得ることができた. そこで, 似たような問題設定のセルフトリガー制御問題に対しても単純にDDPGを適用することで強化学習を行うことができるのではないかと考え, 実験を行った. その結果(少なくとも同じステップ数では)うまく学習をすることはできなかった. この「うまくいかない」とは, DDPGアルゴリズムの中でロス関数を収束させ, 方策の更新を収束させることができなかったという意味で使っている. そこでここからは, 何故イベントトリガー制御とセルフトリガー制御でそのような違いが生じたのかを考えていく.\par
+
+\subsection{状況整理}
+イベントトリガー制御では,方策$\pi$は制御入力$a$とそれをアクチュエータに送信するかを決めるための連続値変数$d_1, d_2$を出力するモデルであるとした(communication$~=(d_1> d_2)$). 一方でセルフトリガー制御の方策関数$\pi$は制御入力$a$と次の通信までの時間間隔$\tau$を出力するモデルであるとした. \par
+DDPGなどの深層強化学習では, 方策をニューラルネットワークを用いてパラメータ近似を行う. セルフトリガー制御でもイベントトリガー制御に倣い, 全てのパラメータに対してAdamと呼ばれるオプティマイザを用いて学習してみた. すると, 本節冒頭で述べたような「うまくいかない」という状況におちいったのである. (ちなみに, Adamは更新方向を勾配の移動平均にし, 勾配の移動平均のノルムに反比例(この時の比例定数が学習率ハイパーパラメータ)するステップサイズにするようなアルゴリズムである.)
+
+\subsection{イベントトリガー制御と, セルフトリガー制御に対する強化学習で違いが生じた原因}
+pythonで行っている実験では, 近似方策勾配のノルムが$1$以下となるように線形にクリップする工夫を施してから, その補正勾配をAdamに渡して更新則(更新方向, ステップサイズ)を導出している.
+したがって, セルフトリガー制御の評価関数に勾配が「非常に」大きくなるようなパラメータ領域が存在しているかどうかは, 今回の実験結果に対して直接悪影響を与えたとは考えられない.それよりも, パラメータの変化に対する割引分布$\rho^{\pi}$(式\eqref{d_dis})の変化が,イベントトリガー制御に対して大きくなりすぎているため, criticの学習のlossと方策勾配の近似に悪影響を及ぼしているという可能性がある. \par
+%もしかしたらじわじわと発散につながる初期状態が広がってきて, その踏みやすくなった初期状態を踏んでしまっただけかもしれないが...
+$\rho^{\pi}$が急激に変化すると, 当然経験データの分布にも影響が出る.
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=10cm]{mini_batch.png}
+ 	\caption{経験データの分布} \label{mini_batch}
+\end{figure}\\
+図\ref{mini_batch}には, 直近の経験データの分布を示した. 赤枠で示された部分(システムが発散している部分)はその中でも最も直近の経験データであり, それまでの経験データとは明らかに異なる領域であると言える. このように未知のデータが突然入ってくなると, 式\eqref{critic_loss}で表されたcriticのlossは大きくなってしまう. そうなると, 正しい方策勾配は計算できなくなる.
+%それは何につながる？？
+%イベントトリガーではどうだったの？？
+\\
+(再掲: 式\eqref{critic_loss})
+\begin{equation*}
+	Loss = \frac{1}{N}\sum_{s\in E} (Q(s,a|\omega) - \{r(s,a)+\gamma Q(s,\pi(s)|\omega)\})^2
+\end{equation*}
+さらに, 方策勾配は割引分布に関する期待値をとるが, 式\eqref{sample_approximation_for_pg}のように実際の計算には図\ref{mini_batch}のデータに対する平均を取ってしまうので, 正しい方策勾配を求めることはできない.(赤枠以外の分布は,現在の方策に対する割引分布には現れない分布かも知れない)\\
+(再掲: 式\eqref{sample_approximation_for_pg})
+\begin{equation*}
+	\expect_{s\sim\rho^{\pi}}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] \simeq \frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] 
+\end{equation*}
+ \par
+そこで, セルフトリガー制御ではAdamの学習率に関するパラメータをイベントトリガーの時のそれに比べて小さくするべきであると考える.\par
+
+
+%(一番重要な段落)
+\subsection{今後の研究のすすめ方}
+前節での検証を踏まえると, actorの学習率を非常に小さくすれば方策の変化も小さくなるため, 長大なステップを重ねれば学習を安定して行えると考えられる. 
+%結局何がしたいのか
+しかしながらこれは自明なことであり, 何らかの工夫を施して高速化を行いたい. もしニューラルネットワークのパラメータのうち, その微少変化に対する割引分布への変化率が小さいものがあれば, そのパラメータに対しては学習率を小さく取っておく必要はない. それを最も議論しやすい形として図\ref{split_NN}のような方策近似モデルを用い, ~$\nabla_{\theta^a}\rho^{\pi_{\theta^{\pi}}}(s), \nabla_{\theta^{\tau}}\rho^{\pi_{\theta^{\pi}}}(s)$を解析することで議論を進めていこうと考える.
+%アルゴリズムに取って良いことをしているのかはわからない.
+
+
+
 
 \begin{thebibliography}{10}
 \bibitem{ECBF}

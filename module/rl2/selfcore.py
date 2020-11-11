@@ -89,7 +89,9 @@ class self_Agent(object):
 
         self.training = True
 
-        self.watched_states = []
+        self.state_memory = []
+        episode_memory = []
+
         self.critic_loss_log = []
         
         # original parameters
@@ -181,24 +183,6 @@ class self_Agent(object):
                 action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
                 dt = tau / action_repetition
 
-                # ecbf certification for tau
-                '''
-                if not ecbf_cond(tau, action):
-                  tau = ecbf(action)
-                if tau < dt_limit:
-                    cbf_nessessity = True
-                '''
-
-                # cbf certification for input
-                cbf_nessessity = False
-                cbf = False
-                if cbf_nessessity:
-                    x = env.state
-                    tmp = bc.u_cbf(x, action)
-                    if action != tmp:
-                        cbf = True
-                        action = tmp
-
                 if self.processor is not None:
                     action = self.processor.process_action(action)
                 reward = np.float32(0)
@@ -231,16 +215,10 @@ class self_Agent(object):
                 metrics = self.backward(reward, terminal=done)
                 self.critic_loss_log.append(metrics[0])
                 episode_reward += reward
-                self.watched_states.append(env.state)
 
                 # save last n step agents for checking how the tau(s) changes step by step
                 if self.step > 1000:
-                    self.save_agents_log()   
-
-                # to save laerning time, we stop testing if theta_dot is exploded
-                if abs(env.state[1]) > 10:
-                    done = True
-                    explosion = True
+                    self.save_agents_log()
 
                 step_logs = {
                     'action': action,
@@ -251,6 +229,7 @@ class self_Agent(object):
                     'info': accumulated_info,
                 }
                 callbacks.on_step_end(episode_step, step_logs)
+                episode_memory.append(env.state)
                 episode_step += 1
                 self.step += 1
 
@@ -277,6 +256,8 @@ class self_Agent(object):
                     callbacks.on_episode_end(episode, episode_logs)
 
                     episode += 1
+                    self.state_memory.append(np.array(episode_memory))
+                    episode_memory = []
                     observation = None
                     episode_step = None
                     episode_reward = None
@@ -286,6 +267,7 @@ class self_Agent(object):
             # This is so common that we've built this right into this function, which ensures that
             # the `on_train_end` method is properly called.
             did_abort = True
+            self.state_memory.append(np.array(episode_memory))
         callbacks.on_train_end(logs={'did_abort': did_abort})
         self._on_train_end()
 

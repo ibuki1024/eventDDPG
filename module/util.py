@@ -46,7 +46,7 @@ def _gain(env, dt=None):
     return K
 
 
-def make_standup_agent(actor_net, tau, env, verbose=False):
+def make_standup_agent(actor_net, tau, env, epochs=50, verbose=False):
     # 学習データの用意
     action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
     dt = tau / action_repetition
@@ -62,6 +62,18 @@ def make_standup_agent(actor_net, tau, env, verbose=False):
 
     # 学習
     actor_net.compile(loss='mean_squared_error',optimizer='adam')
-    actor_net.fit(x_train, y_train, batch_size=128, epochs=50, verbose=verbose)
+    actor_net.fit(x_train, y_train, batch_size=128, epochs=epochs, verbose=verbose)
 
     return actor_net
+
+def NN_params(actor):
+    params = []
+    for layer in actor.layers:
+        if len(layer.get_weights())==0:
+            continue
+        else:
+            w, b = layer.get_weights()
+            layer_params = np.hstack((w.flatten(), b.flatten()))
+            params = np.hstack((params, layer_params))
+    params = np.array(params).flatten()
+    return params
