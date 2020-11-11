@@ -35,10 +35,10 @@ def push_out(arr, insert_object):
 class selfDDPGAgent(self_Agent):
     """Write me
     """
-    def __init__(self, nb_actions, actor, critic, critic_action_input, memory, input_clipper=10.,
+    def __init__(self, nb_actions, actor, critic, critic_action_input, memory, action_clipper=[-10.,10.], tau_clipper=[0.001, 1.],
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
-                 random_process=None, original_noise=False, custom_model_objects={}, target_model_update=.001,clip_com=0.1, **kwargs):
+                 random_process=None, original_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
         if hasattr(actor.output, '__len__') and len(actor.output) > 1:
             raise ValueError('Actor "{}" has more than one output. DDPG expects an actor that has a single output.'.format(actor))
         if hasattr(critic.output, '__len__') and len(critic.output) > 1:
@@ -72,7 +72,8 @@ class selfDDPGAgent(self_Agent):
             assert False, 'Unknown Random Process'
 
         # Parameters.
-        self.input_clipper = input_clipper
+        self.action_clipper = action_clipper
+        self.tau_clipper = tau_clipper
         self.outputlayer_param_mean = []
         self.nb_actions = nb_actions
         self.nb_steps_warmup_actor = nb_steps_warmup_actor
@@ -86,7 +87,6 @@ class selfDDPGAgent(self_Agent):
         self.train_interval = train_interval
         self.memory_interval = memory_interval
         self.custom_model_objects = custom_model_objects
-        self.clip_com = clip_com
 
         # Related objects.
         self.actor = actor
@@ -235,8 +235,8 @@ class selfDDPGAgent(self_Agent):
 
         coef = 1
         action, tau = actor_output
-        action = np.clip(action + np.random.randn() * coef, -self.input_clipper, self.input_clipper)
-        tau = np.clip(tau + np.random.normal(0., 0.01) * coef, 0.001, 0.1)
+        action += np.random.randn() * coef
+        tau += np.random.normal(0., 0.0001) * coef
         return np.array([action, tau])
 
     def select_action(self, state):
@@ -244,7 +244,7 @@ class selfDDPGAgent(self_Agent):
         action = self.actor.predict_on_batch(batch).flatten()
         if self.training and self.original_noise:
             action = self._add_original_noise(action)
-
+        
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
             noise = self.random_process.sample()
@@ -258,7 +258,9 @@ class selfDDPGAgent(self_Agent):
         state = self.memory.get_recent_state(observation)
         #TODO: change the law of selecting action
         action = self.select_action(state)
-        action = np.clip(action, -self.input_clipper, self.input_clipper)
+        #clip
+        action.clip(min=np.array([self.action_clipper[0], self.tau_clipper[0]]),\
+                    max=np.array([self.action_clipper[1], self.tau_clipper[1]]))
 
         # Book-keeping.
         self.recent_observation = observation
@@ -384,12 +386,12 @@ class selfDDPGAgent(self_Agent):
 
 
 class selfDDPGAgent2(selfDDPGAgent):
-    def __init__(self, nb_actions, actor, critic, critic_action_input, memory,
+    def __init__(self, nb_actions, actor, critic, critic_action_input, memory, action_clipper=[-10., 10.], tau_clipper=[0.001, 1.],
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
                  random_process=None, original_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
         super().__init__(nb_actions=nb_actions, actor=actor, critic=critic,
-                 critic_action_input=critic_action_input, memory=memory,
+                 critic_action_input=critic_action_input, memory=memory, action_clipper=action_clipper, tau_clipper=tau_clipper,
                  gamma=gamma, batch_size=batch_size, nb_steps_warmup_critic=nb_steps_warmup_critic,
                  nb_steps_warmup_actor=nb_steps_warmup_actor,
                  train_interval=train_interval, memory_interval=memory_interval, delta_range=delta_range,
@@ -641,10 +643,10 @@ def gradient_evaluation(gradient_values):
 class sampleDDPGAgent(sample_Agent):
     """Write me
     """
-    def __init__(self, nb_actions, actor, critic, critic_action_input, memory, input_clipper=10.,
+    def __init__(self, nb_actions, actor, critic, critic_action_input, memory, action_clipper=10.,
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
-                 random_process=None, custom_model_objects={}, target_model_update=.001,clip_com=0.1, **kwargs):
+                 random_process=None, custom_model_objects={}, target_model_update=.001, **kwargs):
         if hasattr(actor.output, '__len__') and len(actor.output) > 1:
             raise ValueError('Actor "{}" has more than one output. DDPG expects an actor that has a single output.'.format(actor))
         if hasattr(critic.output, '__len__') and len(critic.output) > 1:
@@ -678,7 +680,7 @@ class sampleDDPGAgent(sample_Agent):
             assert False, 'Unknown Random Process'
 
         # Parameters.
-        self.input_clipper = input_clipper
+        self.action_clipper = action_clipper
         self.outputlayer_param_mean = []
         self.nb_actions = nb_actions
         self.nb_steps_warmup_actor = nb_steps_warmup_actor
@@ -691,7 +693,6 @@ class sampleDDPGAgent(sample_Agent):
         self.train_interval = train_interval
         self.memory_interval = memory_interval
         self.custom_model_objects = custom_model_objects
-        self.clip_com = clip_com
 
         # Related objects.
         self.actor = actor
@@ -839,7 +840,7 @@ class sampleDDPGAgent(sample_Agent):
         state = self.memory.get_recent_state(observation)
         #TODO: change the law of selecting action
         action = self.select_action(state)
-        action = np.clip(action, -self.input_clipper, self.input_clipper)
+        action = np.clip(action, -self.action_clipper, self.action_clipper)
 
         # Book-keeping.
         self.recent_observation = observation
