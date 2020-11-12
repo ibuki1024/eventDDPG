@@ -91,6 +91,7 @@ class self_Agent(object):
 
         self.state_memory = []
         episode_memory = []
+        self.params_log = []
 
         self.critic_loss_log = []
         
@@ -269,6 +270,7 @@ class self_Agent(object):
             did_abort = True
             self.state_memory.append(np.array(episode_memory))
         callbacks.on_train_end(logs={'did_abort': did_abort})
+        self.params_log = np.array(self.params_log)
         self._on_train_end()
 
         return history

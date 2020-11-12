@@ -22,6 +22,18 @@ def _all_weights(layers):
         out.append(layer.get_weights())
     return out
 
+def _NN_params(actor):
+    params = []
+    for layer in actor.layers:
+        if len(layer.get_weights())==0:
+            continue
+        else:
+            w, b = layer.get_weights()
+            layer_params = np.hstack((w.flatten(), b.flatten()))
+            params = np.hstack((params, layer_params))
+    params = np.array(params).flatten()
+    return params
+
 
 def push_out(arr, insert_object):
     arr.append(insert_object)
@@ -604,6 +616,7 @@ class selfDDPGAgent2(selfDDPGAgent):
         if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
             self.update_target_models_hard()
         
+        self.params_log.append(_NN_params(self.actor))
         return metrics
 
     def _gradient_calculate_function(self):

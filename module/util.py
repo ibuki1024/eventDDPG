@@ -66,7 +66,7 @@ def make_standup_agent(actor_net, tau, env, epochs=50, verbose=False):
 
     return actor_net
 
-def NN_params(actor):
+def get_NN_params(actor):
     params = []
     for layer in actor.layers:
         if len(layer.get_weights())==0:
@@ -77,3 +77,22 @@ def NN_params(actor):
             params = np.hstack((params, layer_params))
     params = np.array(params).flatten()
     return params
+
+
+def set_NN_params(actor, params):
+    param_idx = 0
+    for layer in actor.layers:
+        if len(layer.get_weights())==0:
+            continue
+        else:
+            w, b = layer.get_weights()
+            # set w
+            w_prime = params[param_idx:param_idx+w.flatten().shape[0]].reshape(w.shape)
+            param_idx += w.flatten().shape[0]
+
+            # set b
+            b_prime = params[param_idx:param_idx+b.flatten().shape[0]].reshape(b.shape)
+            param_idx += b.flatten().shape[0]
+
+            layer.set_weights([w_prime, b_prime])
+    assert params.shape[0] == param_idx
