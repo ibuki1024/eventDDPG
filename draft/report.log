@@ -1,4 +1,4 @@
-This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  9 NOV 2020 09:50
+This is e-pTeX, Version 3.14159265-p3.8.0-180226-2.6 (utf8.euc) (TeX Live 2018) (preloaded format=platex 2019.4.5)  13 NOV 2020 14:35
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -410,27 +410,37 @@ LaTeX Warning: Reference `continuous' on page 7 undefined on input line 228.
 [7] [8]
 File: mini_batch.png Graphic file (type bmp)
 <mini_batch.png>
- [9]
+ [9] [10]
+File: mini_batch_r.png Graphic file (type bmp)
+<mini_batch_r.png>
+File: compare_episode_agent.png Graphic file (type bmp)
+<compare_episode_agent.png>
+File: episode_distribution.png Graphic file (type bmp)
+<episode_distribution.png>
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
 LaTeX Font Info:    Font shape `JT1/mc/m/it' in size <10> not available
-(Font)              Font shape `JT1/mc/m/n' tried instead on input line 355.
+(Font)              Font shape `JT1/mc/m/n' tried instead on input line 383.
 LaTeX Font Info:    Font shape `JT1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 355.
+(Font)              scaled to size 9.60999pt on input line 383.
 LaTeX Font Info:    Font shape `JY1/mc/m/it' in size <10> not available
-(Font)              Font shape `JY1/mc/m/n' tried instead on input line 355.
+(Font)              Font shape `JY1/mc/m/n' tried instead on input line 383.
 LaTeX Font Info:    Font shape `JY1/mc/m/n' will be
-(Font)              scaled to size 9.60999pt on input line 355.
- [10] (./report.aux)
+(Font)              scaled to size 9.60999pt on input line 383.
+[11] [12] (./report.aux)
 
 LaTeX Warning: There were undefined references.
 
  ) 
 Here is how much of TeX's memory you used:
- 2795 strings out of 493281
- 35784 string characters out of 6145042
- 121581 words of memory out of 5000000
- 6648 multiletter control sequences out of 15000+600000
+ 2810 strings out of 493281
+ 36175 string characters out of 6145042
+ 121609 words of memory out of 5000000
+ 6657 multiletter control sequences out of 15000+600000
  25190 words of font info for 110 fonts, out of 8000000 for 9000
  934 hyphenation exceptions out of 8191
  27i,14n,25p,631b,384s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on report.dvi (10 pages, 52548 bytes).
+Output written on report.dvi (12 pages, 56896 bytes).
