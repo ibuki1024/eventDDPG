@@ -400,7 +400,7 @@ class selfDDPGAgent(self_Agent):
 class selfDDPGAgent2(selfDDPGAgent):
     def __init__(self, nb_actions, actor, critic, critic_action_input, memory, action_clipper=[-10., 10.], tau_clipper=[0.01, 1.],
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
-                 train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf, params_logging=False,
+                 train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf, params_logging=False, gradient_logging=False,
                  random_process=None, original_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
         super().__init__(nb_actions=nb_actions, actor=actor, critic=critic,
                  critic_action_input=critic_action_input, memory=memory, action_clipper=action_clipper, tau_clipper=tau_clipper,
@@ -413,6 +413,7 @@ class selfDDPGAgent2(selfDDPGAgent):
                  custom_model_objects=custom_model_objects,
                  target_model_update=target_model_update)
         self.gradient_log = []
+        self.gradient_logging = gradient_logging
         self.params_logging = params_logging
         
     def compile(self, optimizer, metrics=[], action_lr=0.001, tau_lr=0.00001):
@@ -610,9 +611,10 @@ class selfDDPGAgent2(selfDDPGAgent):
                 action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
                 assert action_values.shape == (self.batch_size, self.nb_actions)
                 
-                current_gradient = self._get_current_gradient(inputs)
-                norm = gradient_evaluation(current_gradient)
-                self.gradient_log.append(norm)
+                if self.gradient_logging:
+                    current_gradient = self._get_current_gradient(inputs)
+                    norm = gradient_evaluation(current_gradient)
+                    self.gradient_log.append(norm)
 
         if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
             self.update_target_models_hard()
