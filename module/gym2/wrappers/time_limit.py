@@ -10,6 +10,7 @@ class TimeLimit(gym2.Wrapper):
             self.env.spec.max_episode_steps = max_episode_steps
         self._max_episode_steps = max_episode_steps
         self._elapsed_steps = None
+        assert dt is not None
         self._dt = dt
 
     def step(self, action):
@@ -27,6 +28,7 @@ class TimeLimit(gym2.Wrapper):
 
 
 class TimeLimit2(gym2.Wrapper):
+    """TimeLimit class for self_trigger control."""
     def __init__(self, env, max_episode_steps=None):
         super(TimeLimit2, self).__init__(env)
         if max_episode_steps is None and self.env.spec is not None:

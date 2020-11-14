@@ -207,11 +207,11 @@ def multiple_tanh(x, ratio=10.):
     return ratio * K.tanh(x)
 
 
-def tau_output(x, minimum=0.001):
+def tau_output(x, minimum=0.01):
     return 0.999 * K.sigmoid(x) + K.constant(minimum)
 
 
-def self_trigger_output(tensor, minimum=0.001):
+def self_trigger_output(tensor, minimum=0.01):
     """multiple_tanh and sigmoid.
 
     This activation function is expected to be used in output layer.

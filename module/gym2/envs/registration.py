@@ -98,6 +98,7 @@ class EnvRegistry(object):
         if env.spec.max_episode_steps is not None:
             if env.spec.id == 'Pendulum-v2':
                 from gym2.wrappers.time_limit import TimeLimit2
+                # for self_trigger
                 env = TimeLimit2(env, max_episode_steps=env.spec.max_episode_steps)
             else:
                 from gym2.wrappers.time_limit import TimeLimit
@@ -141,13 +142,13 @@ class EnvRegistry(object):
         self.env_specs[id] = EnvSpec(id, **kwargs)
 
 # Have a global registry
-registry = EnvRegistry()
+registry = EnvRegistry() #上で定義したclassをinstance化している
 
 def register(id, **kwargs):
     return registry.register(id, **kwargs)
 
 def make(id, dt=None, **kwargs):
-    return registry.make(id, **kwargs)
+    return registry.make(id, dt, **kwargs)
 
 def spec(id):
     return registry.spec(id)

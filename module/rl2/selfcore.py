@@ -181,7 +181,7 @@ class self_Agent(object):
                 action = action_tau if action_tau.shape[0] == 1 else np.array([action_tau[0]])
 
                 tau = action_tau[1]
-                action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
+                action_repetition = int(np.ceil(20 * tau))  # minimum natural number which makes `dt` smaller than 0.05
                 dt = tau / action_repetition
 
                 if self.processor is not None:
