@@ -48,13 +48,14 @@ def _gain(env, dt=None):
 
 def make_standup_agent(actor_net, tau, env, epochs=50, verbose=False):
     # 学習データの用意
-    action_repetition = int(np.ceil(200 * tau))  # minimum natural number which makes `dt` smaller than 0.005
+    action_repetition = int(np.ceil(20 * tau))  # minimum natural number which makes `dt` smaller than 0.005
     dt = tau / action_repetition
     K = _gain(env, dt)
     x_train = []
     y_train = []
+    high = np.array([np.pi, np.pi])
     for i in range(30000):
-        x_train.append([np.random.randn(2,) / 10.])
+        x_train.append([np.random.uniform(low=-high, high=high)])
         y_train.append([np.dot(K, x_train[-1][0]), tau])
 
     x_train = np.array(x_train)
