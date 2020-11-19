@@ -46,7 +46,7 @@ def _gain(env, dt=None):
     return K
 
 
-def make_standup_agent(actor_net, tau, env, epochs=50, verbose=False):
+def make_standup_agent(actor_net, tau, env, epochs=100, verbose=False):
     # 学習データの用意
     action_repetition = int(np.ceil(20 * tau))  # minimum natural number which makes `dt` smaller than 0.005
     dt = tau / action_repetition
