@@ -2,3 +2,5 @@
 .ipynb_checkpoints
 __pychahe__
 *.pyc
+.python-version
+.gitignore
