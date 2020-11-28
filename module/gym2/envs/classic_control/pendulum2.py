@@ -53,8 +53,8 @@ class PendulumEnv2(gym2.Env):
         u = u[0]
         self.last_u = u  # for rendering
         # angle_normalize したらあかんのとちゃうん
-        # costs = angle_normalize(th) ** 2 + .1 * thdot ** 2  # + .001 * (u ** 2)
-        costs = th ** 2 + .1 * thdot ** 2  # + .001 * (u ** 2)
+        costs = angle_normalize(th) ** 2 + .1 * thdot ** 2  # + .001 * (u ** 2)
+        # costs = th ** 2 + .1 * thdot ** 2  # + .001 * (u ** 2)
 
         newthdot = thdot + (- 3 * g / (2 * l) * np.sin(th + np.pi) + 3. / (m * l ** 2) * u) * dt
         newth = th + newthdot * dt
@@ -67,12 +67,6 @@ class PendulumEnv2(gym2.Env):
     def reset(self):
         high = np.array([np.pi, np.pi]) # start with inverted point
         self.state = self.np_random.uniform(low=-high, high=high) # th=0, -1<thd<1
-        """
-        while 1:
-            self.state = self.np_random.uniform(low=-high, high=high) # th=0, -1<thd<1
-            if h(self.state, set_alpha()) > 0:
-                break
-        """
         self.last_u = None
         return self._get_obs()
 
