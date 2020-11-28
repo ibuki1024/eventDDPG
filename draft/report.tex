@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 11.13}}}
+\title{\large{\bf{進捗報告 11.27}}}
 \author{M2 竹内 維吹}
 \date{\today}
 \begin{document}
@@ -50,7 +50,7 @@
 	\pi^{*}=\argmax_{\pi}J(\pi) \label{purpose_of_rl}
 \end{equation}を求めることである. ここで, 
 \begin{align}
-	V^{\pi}(s) &= \sum_{t=0}^{\infty}\gamma^tr(s_t, a_t)|_{a_t=\pi(s_t)}, s_0 = s\\
+	V^{\pi}(s) &= \sum_{t=0}^{\infty}\gamma^tr(s_t, a_t)|_{a_t=\pi(s_t)}, s_0 = s\label{value_function}\\
 	J(\pi) &= \expect_{s_0\sim d_0}[V^{\pi}(s_0)]
 \end{align}
 であり,~$J(\pi), V^{\pi}(s)$をそれぞれ評価関数, (状態)価値関数とよぶ.\par
@@ -141,241 +141,78 @@ DDPGはミニバッチ学習を用いる. 過去の経験データ$(s_t, a_t, r_
 学習の初期方策として
 \begin{align}
 \begin{cases}
-	a(s)=a_{0.001}^{*}(s)\\
-	\tau(s)=0.001
+	a(s)=a_{0.05}^{*}(s)\\
+	\tau(s)=0.2
 \end{cases} \label{pi_init}
 \end{align}
-とする方策$\pi_{\rm{init}}$を用いる.ただし, $a_{0.001}^{*}(s)$はシステム\eqref{pendulum}を,離散化幅$\delta_t=0.001$として離散化したシステムを原点付近で安定化する制御則として与える.
+とする方策$\pi_{\rm{init}}$を用いる.ただし, $a_{0.05}^{*}(s)$はシステム\eqref{pendulum}を,離散化幅$\delta_t=0.05$として離散化したシステムを原点付近で安定化する制御則として与える.
 
-\subsection{学習の様子からみる勾配法の進捗の確認}
-式\eqref{reward}より, $\tau$を大きくするモチベーションは$\lambda$に大きく依存するため, それを様々な値にすることでど学習過程にどのような変化が見られるのかを確認してみた. ここでは,~$\lambda$を$0.05, 0.5, 5, 50$に設定し, それぞれ3回, 200000ステップ(インタラクションの回数)の強化学習を行った. また,~$\tau$は$0.001\sim0.1$の範囲に制限している.\par
-まずそれぞれの学習タスクの中で, 1エピソードの間の$\tau$の平均値の変化を見てみる.\par
+\subsection{学習によって得られた方策}
+方策を表現するニューラルネットワークモデルや, 学習率などを工夫することで, 学習を安定的に進めることができた. 方策$\pi_{\rm{init}}$から1000000ステップの学習を行うことで得られた方策を$\pi_{\rm{RL}}$と書くと,~$\pi_{\rm{RL}}$による, とある初期状態からの制御の様子は以下のようになる.
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=14cm]{tau_exp_ave.png}
- 	\caption{学習を通しての$\tau$の変化} \label{average_tau}
+ 	\includegraphics[width=7cm]{self_trigger_log.png}
+ 	\caption{$\pi_{\rm{RL}}$による制御ログ(角度(rad)と通信間隔(s))} \label{self_trigger_log}
 \end{figure}\par
-ここで注意したいのは, $\tau$によって200000回のインタラクションに含まれるエピソード数が異なる点である. 例えば$\tau$の学習が進まずにずっと$\tau=0.001$であった場合, 10秒間の制御の間には10000回のインタラクションが行われる. したがって200000回のインタラクションの間には20エピソードしか含まれない. 逆に, 初期から$\tau$の学習が進み$\tau=0.1$となることが増えてくると, エピソード数は増えてくる. 図\ref{average_tau}の$x$軸の範囲が異なるのはそのためである. \par
-図\ref{average_tau}をみると, 勾配法の収束は(200000ステップの間は)見ることができない. このことから, 近似勾配$g=\frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}]$のノルムの200000ステップの間の変化を見てみる. 
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=14cm]{gradient_log.png}
- 	\caption{学習を通しての$\|g\|$の変化} \label{gradient_log}
-\end{figure}\par
-図\ref{gradient_log}をみると, 勾配のノルム$\|g\|$は収束していない. また, 100000ステップあたりで突然大きな勾配になっていることがわかる. 以下では, このような問題が生じている原因について検討していく.
-
-\subsection{勾配法が収束しない原因の検討}
-2.4節で示したDDPGのアルゴリズム自体の問題点以外に, 前節の問題点の原因となる候補を考察する. \par
-まず1つ目として,~$Q$関数の近似が正しく行えていないことが考えられる. actorの更新には
-\begin{equation*}
-	g=\frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}]
-\end{equation*}
-が用いられるため,~$Q$関数の近似精度は必要不可欠である. しかしながら, DDPGでは各ステップにおける方策$\pi_{\theta_k}$に対する$Q^{\pi_{\theta_k}}$の学習が収束する前に次ステップに進む場合があり, この場合は間違った方向にactorの更新がなされることになる.\par
-
-2つ目に, 正しい方策勾配\eqref{true_pg}がパラメータ空間上で非常に変化が激しい領域がある可能性があることである. 図\ref{gradient_log}をみると, 一度近似勾配$g$のノルムが小さくなった後再び大きくなっている. もしノルムが小さくなっているステップ周辺での$Q$関数が正しく近似されており, replay buffer の分布が$\rho^{\pi_{\theta_k}}$に近いのならば,用いられた勾配は正しい値となる.これが急激に大きくなっているのなら, その場合のステップサイズを小さくしておく必要がある. また, 方策が大きく変化するとcriticのパラメータ$\omega$の再学習も必要となり, 1つ目の問題点の影響を受けることになる.\par
-
-\section{課題点抽出}
-前節で行った考察より, まず方策勾配を解析的に計算してパラメータ空間上で急峻な変化をもつ構造かどうかを確認する. もし予想の通りであれば, そのパラメータ付近で意図的にステップサイズを小さくする手法を考案する.逆に, 急峻となる構造でないのならば,~replay bufferのデータの分布に問題があるということになり, システムとのインタラクション方法について考察する必要がある.\par
-方策勾配の解析的な計算についてであるが, 図\ref{gradient_log}に見られた問題点は, 最適セルフトリガー制御の強化学習に特有の特徴であったため,~$\nabla_{\theta^a}J(\pi_{\theta}),~\nabla_{\theta_{\tau}}J(\pi_{\theta})$についてそれぞれ計算を行いたいと考えている. \par
-
-\section{方策勾配の大きさによる, 入力信号$a$と通信間隔$\tau$の学習率の考察}
-図\ref{split_NN}のようにactorネットワークを, ~$a(s)$と$\tau(s)$を分離したモデルとして用いる. 
-\begin{figure}[h]
-	\centering
- 	\includegraphics[width=10cm]{split_NN.png}
- 	\caption{actorネットワーク} \label{split_NN}
-\end{figure}\\
-actorネットワークの全パラメータを$\theta^{\mu}$,~$a(s)$と$\tau(s)$を表す部分ネットワークのパラメータをそれぞれ$\theta^a, \theta^{\tau}$とする.このとき, 方策勾配$\nabla_{\theta^{\mu}}J(\theta^{\mu})$もそれぞれのパラメータが表す部分を分けて, $\nabla_{\theta^a}J(\theta^{\mu}), \nabla_{\theta^{\tau}}J(\theta^{\mu})$としたとき, パラメータの更新則は以下のようになる.
-\begin{equation}
-	\theta^{\mu}\gets \theta^{\mu} - \alpha_a\nabla_{\theta^a}J(\theta^{\mu}) - \alpha_{\tau}\nabla_{\theta^{\tau}}J(\theta^{\mu})
-\end{equation}
-研究の1つの成果物として,~$\alpha_a, \alpha_{\tau}$の理論的な大きさの設定方法について言及できればと考えている.そのため, 勾配$\nabla_{\theta^a}J(\theta^{\mu}), \nabla_{\theta^{\tau}}J(\theta^{\mu})$の大きさをそれぞれみてみる.~($\theta^{\tau}, \theta^{a}$はそれぞれ同じ長さのパラメータベクトルにしています.)\par
-6.1節でcriticが収束した$\pi_1, \pi_2$について, その方策勾配$\nabla_{\theta^a}J(\theta^{\mu}), \nabla_{\theta^{\tau}}J(\theta^{\mu})$のノルムを計算すると, $\pi_1$での値は
-\begin{align}
-	\|\nabla_{\theta^a}J(\theta^{\mu})\| &= 66.70076 \\
-	\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\| &= 8.730332e-05
-\end{align}
-$\pi_2$での値は,
-\begin{align}
-	\|\nabla_{\theta^a}J(\theta^{\mu})\| &= 1.9210727 \\
-	\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\| &= 4.414095e-05
-\end{align}
-となった. このことから,~$\theta^{\tau}$の微小変化が$J$に与える影響が非常に小さいことが見てとれる. \par
-
-\section{2つのパラメータに関する方策勾配の考察}
-前節で行った検証により倒立振子の場合には, ~actorを表現する2つのニューラルネットワークのパラメータに関する方策勾配$\nabla_{\theta^a}J(\theta^{\mu}), \nabla_{\theta^{\tau}}J(\theta^{\mu})$の大きさがかなり異なっていた. このことから, 制御対象に関するどのような前提があれば$\|\nabla_{\theta^a}J(\theta^{\mu})\|>\|\nabla_{\theta^{\tau}}J(\theta^{\mu})\|$となるのかを考えてみる.\par
-評価関数$J(\theta^{\mu})=\expect_{s_0\sim d_0}[V^{\theta^{\mu}}(s_0)]$であることから$\nabla_{\theta^{\mu}}J(\theta^{\mu})=\int_{S}d_0(s)\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s)\textrm{d}s$なので, まず$\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s)$について詳しくみていく. 価値関数$V^{\theta^{\mu}}(s)$の(一般的な)性質から, 
-\begin{equation}
-	\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s) = \nabla_{\theta^{\mu}}[r(s, \mu(s|\theta^{\mu}))+\gamma V^{\theta^{\mu}}(s^{\prime})]
-\end{equation}
-微分のchain~ruleより,
-\begin{align}
-	\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s) &= \nabla_{\theta^{\mu}}\mu(s|\theta^{\mu})\nabla_ur(s, u)|_{u=\mu(s|\theta^{\mu})}\nonumber\\
-	&+\gamma\int_{S}\nabla_{\theta^{\mu}}\mu(s|\theta^{\mu})\nabla_{u}\textrm{Pr}(s^{\prime}|s, u)|_{u=\mu(s|\theta^{\mu})}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime}\nonumber\\
-	&+\gamma\int_{S}\textrm{Pr}(s^{\prime}|s, \mu(s))\nabla_{\theta^{\mu}}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime} \label{recurrence}
-\end{align}
-となる(ただし,~$u=[a,\tau$]). この式は微分するパラメータをactor全体のパラメータ$\theta^{\mu}$ではなく,入力信号$a$, 通信間隔$\tau$のネットワークのパラメータのみに絞った場合にも同じような式が成り立つはずである. つまり,
-\begin{align}
-	\nabla_{\theta^{a}}V^{\theta^{\mu}}(s) &= \nabla_{\theta^{a}}\mu(s|\theta^{\mu})\nabla_{a}r(s, u)|_{u=\mu(s|\theta^{\mu})}\nonumber\\
-	&+\gamma\int_{S}\nabla_{\theta^{a}}\mu(s|\theta^{\mu})\nabla_{a}\textrm{Pr}(s^{\prime}|s, u)|_{u=\mu(s|\theta^{\mu})}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime}\nonumber\\
-	&+\gamma\int_{S}\textrm{Pr}(s^{\prime}|s, \mu(s))\nabla_{\theta^{a}}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime} \label{recurrence_a}
-\end{align}
-\begin{align}
-	\nabla_{\theta^{\tau}}V^{\theta^{\mu}}(s) &= \nabla_{\theta^{\tau}}\mu(s|\theta^{\mu})\nabla_{\tau}r(s, u)|_{u=\mu(s|\theta^{\mu})}\nonumber\\
-	&+\gamma\int_{S}\nabla_{\theta^{\tau}}\mu(s|\theta^{\tau})\nabla_{\tau}\textrm{Pr}(s^{\prime}|s, u)|_{u=\mu(s|\theta^{\mu})}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime}\nonumber\\
-	&+\gamma\int_{S}\textrm{Pr}(s^{\prime}|s, \mu(s))\nabla_{\theta^{\tau}}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime} \label{recurrence_tau}
-\end{align}が成り立つ.以下$\theta_{\tau}, \theta_a$の両方に成り立つ議論をする場合に, 便宜上$\theta$を用いることとする.  \par
-システム\eqref{continuous}は確定系なので, 
-\begin{equation}
-	s^{\prime} = s + \int_{0}^{\tau(s)}(f(t)+g(t)a(s))\textrm{d}t
-\end{equation}
-と定まり, 各漸化式の第3項目は
-\begin{equation}
-	\int_{S}\textrm{Pr}(s^{\prime}|s, \mu(s))\nabla_{\theta}V^{\theta^{\mu}}(s^{\prime})\textrm{d}s^{\prime}=\nabla_{\theta}V^{\theta^{\mu}}(s + \int_{0}^{\tau(s)}(f(t)+g(t)a(s))\textrm{d}t)
-\end{equation}
-となる.\par
-またシステムと方策$\pi(s)$が確定的であるので, 全インターバルの開始時刻での状態は, 初期状態を引数とする関数で書け, $s^{(n)}(s)$と表記する. 同じく, 漸化式の第1,2項目までの和も確定的であり, $k^{(n)}(s)$とすれば, 
-\begin{align}
-	\nabla_{\theta}V^{\theta^{\mu}}(s) = \sum_{n=0}^{\infty} \gamma^{i}k^{(n)}(s)
-\end{align}
-となるため, $k^{(n)}(s)$を解析的に表現できれば, 価値関数の勾配を解析的に書けそうである.
-
-\subsection{注意}
-$\nabla_{\theta^{\tau}}\mu(s|\theta^{\mu})$,~$\nabla_{\theta^{a}}\mu(s|\theta^{\mu})$に関しては, ニューラルネットワークモデルの設定にしか依存しないものなので, 今回は特段着目しない.
-
-\subsection{各ステップの報酬のパラメータ勾配}
-初めに, 漸化式\eqref{recurrence_tau}の右辺第1項に関して考察する.~$T$を各インターバルの開始時刻だとすると, 
-\begin{align}
-	\nabla_{\tau}r(s, u)|_{u=\mu(s|\theta^{\mu})} &= -\nabla_{\tau}\int_{T}^{T+\tau} s(t)^{\top}Qs(t)\textrm{d}t - \nabla_{\tau}(\tau a^{\top}Ra) + \nabla_{\tau}(\lambda\tau) \nonumber\\
-	&= -\nabla_{\tau}\int_{0}^{\tau} s(t+T)^{\top}Qs(t+T)\textrm{d}t - a^{\top}Ra + \lambda \nonumber\\
-	&= - s(\tau+T)^{\top}Qs(\tau+T) - a^{\top}Ra + \lambda \label{reward_tau_gradient}
-\end{align}
-となる. ただし, 
-\begin{equation}
-	s(t+T) = s(T) + \int_{0}^{t} (f(l+T)+g(l+T)a(T))\textrm{d}l \label{solution}
-\end{equation}
-であることを注意しておく.
+図\ref{self_trigger_log}からは, 原点付近では通信間隔を大きく, そうでない場合は通信間隔を小さく, というふうに適応的に通信間隔を決定している様子が見られる.
 \par
-次に, 漸化式\eqref{recurrence_a}の右辺第1項に関して考察する. 
-\begin{align}
-	\nabla_{a}r(s, u)|_{u=\mu(s|\theta^{\mu})} &= -\nabla_{a}\int_{T}^{T+\tau} s(t)^{\top}Qs(t)\textrm{d}t - \nabla_{a}(\tau a^{\top}Ra) + \nabla_{a}(\lambda\tau) \nonumber\\
-	&= -\nabla_{a}\int_{0}^{\tau} s(t+T)^{\top}Qs(t+T)\textrm{d}t - \tau Ra \nonumber\\
-	&= -\int_{0}^{\tau} (\pdif{s(t+T)}{a}^{\top}Qs(t+T)+s(t+T)^{\top}Q\pdif{s(t+T)}{a})\textrm{d}t - \tau Ra \nonumber \\
-	&= -2\int_{0}^{\tau} s(t+T)^{\top}Q\pdif{s(t+T)}{a}\textrm{d}t - \tau Ra~(∵Q:対称)
-\end{align}
-式\eqref{solution}より, 
-\begin{align}
-	\pdif{s(t+T)}{a} &= \pdif{}{a}\int_{0}^{t} (f(l+T)+g(l+T)a)\textrm{d}l \nonumber \\
-	&= \int_{0}^{t} g(l+T)\textrm{d}l
-\end{align}
-なので, 
+この時の評価関数$J(\pi_{\rm{RL}})$の値は
 \begin{equation}
-	\nabla_{a}r(s, u)|_{u=\mu(s|\theta^{\mu})} = -2\int_{0}^{\tau}s(t+T)^{\top}Q\left\{\int_{0}^{t}g(l+T)\textrm{d}l\right\}\textrm{d}t - \tau Ra \label{reward_a_gradient}
+	J(\pi_{\rm{RL}}) = 45
 \end{equation}
-と表せる.したがって, インターバルの開始状態$s(T)$と,~$u=\mu(s|\theta^{\mu})$がわかれば各インターバルにおけるステップ報酬の勾配の比較は可能である.\par
-最後に, 各インターバルの開始時刻での状態は
-\begin{equation}
-	s^{(n)}(s) = s^{(0)}(s) + \sum_{i=0}^{n−1}\int_{T_i}^{T_i + \tau(s^{(i)}(s))}(f(T_i+t)+g(T_i+t)a(s^{(i)}(s)))\textrm{d}t
-\end{equation}
-と書けるため, 式\eqref{reward_tau_gradient}, \eqref{reward_a_gradient}に代入すれば全ステップでの$r$の勾配は, 関数$V$の引数$s$の関数として表せる. ただし,~$T_i = \sum_{i=0}^{n-1}\tau(s^{(i)}(s))$である. 
+となり, 初期方策$\pi_{\rm{init}}$に対する$J(\pi_{\rm{init}})=-14$を上回った.\par
 
-
-\section{修論の見通し}
-方策勾配は
-\begin{align}
-	\nabla_{\theta^{\pi}}J(\theta^{\pi}) &= \expect_{s\sim\rho^{\pi^{\theta^{\pi}}}}[
-	\nabla_{\theta^{\pi}}\pi(s|\theta^{\pi})\nabla_{u}Q^{\theta^{\pi}}(s, u)|_{u=\pi(s|\theta^{\pi})}] 
-\end{align}
-と書けるのであった. 入力アフィン系のセルフトリガー制御に対象を絞ることにより, $Q^{\pi}(s,a)$を解析にかけることを活用して, $\nabla_{\theta^{\pi}}J(\theta^{\pi})$の大きさや形を解析し, 勾配法の設定方法についての理論を構築していきたい. \par
-本研究では方策$\pi$を図\ref{split_NN}のように$a,\tau$をそれぞれ別のモデルに分離していたことから, それぞれのモデルに対する方策勾配は
-\begin{align}
-	\nabla_{\theta^{\tau}}J(\theta^{\pi}) &= \expect_{s\sim\rho^{\pi^{\theta^{\pi}}}}[
-	\nabla_{\theta^{\tau}}\tau(s|\theta^{\tau})\nabla_{\tau}Q^{\theta^{\pi}}(s, a, \tau)|_{a=a(s|\theta^a), \tau=\tau(s|\theta^{\tau})}] \label{tau_gradient}\\
-	\nabla_{\theta^{a}}J(\theta^{\pi}) &= \expect_{s\sim\rho^{\pi^{\theta^{\pi}}}}[
-	\nabla_{\theta^{a}}a(s|\theta^{a})\nabla_{a}Q^{\theta^{\pi}}(s, a, \tau)|_{a=a(s|\theta^a),\tau=\tau(s|\theta^{\tau})}] \label{a_gradient}
-\end{align}
-とそれぞれ書ける. 式\eqref{tau_gradient}, \eqref{a_gradient}の中で問題の特有性を活かせるのは第2項目($Q$関数の勾配)であるためこれに着目したい.
-\if0
-しかしながら, 引数$s,a,\tau$にそれぞれ$\theta^{\pi}$によって決定付けられる数値を代入した後の性質は, 方策近似モデル依存の性質になってしまうため, ニューラルネットワークの構築方法などの議論を回避するには$s,a,\tau,\theta^{\pi}$によらない性質を考えるべきである.\par
-\fi
-たとえば,~$\nabla_{\tau}Q^{\theta^{\pi}}(s, a, \tau)|_{a=a(s|\theta^a), \tau=\tau(s|\theta^{\tau})}や\nabla_{a}Q^{\theta^{\pi}}(s, a, \tau)|_{a=a(s|\theta^a), \tau=\tau(s|\theta^{\tau})}$のある程度の形がわかれば, この問題に適したオプティマイザが何なのかを特徴付けることができるかも知れない. しかしながら, 
-\begin{align}
-	\nabla_{\tau}Q^{\theta^{\pi}}(s, a, \tau) &= \nabla_{\tau}[r(s,a,\tau)+\gamma s^{\prime}(s,a,\tau)\nabla_{s}V^{\theta^{\pi}}(s)|_{s=s^{\prime}(s,a,\tau)}]\\
-	\nabla_{a}Q^{\theta^{\pi}}(s, a, \tau) &= \nabla_{a}[r(s,a,\tau)+\gamma s^{\prime}(s,a,\tau)\nabla_{s}V^{\theta^{\pi}}(s)|_{s=s^{\prime}(s,a,\tau)}]
-\end{align}
-であり, 両方に共通している$\nabla_{s}V^{\theta^{\pi}}(s)|_{s=s^{\prime}(s,a,\tau)}$についての計算結果が非常に煩雑で, どのような形になるのか評価方法がわかりません. \par
-また, ~$Q$関数が方策依存の関数であるため,方策近似モデルであるニューラルネットワークに関する仮定をおかないと議論を進めることができない.そのため, 強い仮定をおいてしまうことになるがその方向で議論を進めていこうと思います.
-
-\section{イベントトリガーとセルフトリガーの違いについての考察}
-最適イベントトリガー制御問題に対するDDPGは工夫なく(通信の有無を2つの連続値の大小を真偽値とするのが工夫なのかも知れないが)適用しても最適解を得ることができた. そこで, 似たような問題設定のセルフトリガー制御問題に対しても単純にDDPGを適用することで強化学習を行うことができるのではないかと考え, 実験を行った. その結果(少なくとも同じステップ数では)うまく学習をすることはできなかった. この「うまくいかない」とは, DDPGアルゴリズムの中でロス関数を収束させ, 方策の更新を収束させることができなかったという意味で使っている. そこでここからは, 何故イベントトリガー制御とセルフトリガー制御でそのような違いが生じたのかを考えていく.\par
-
-\subsection{状況整理}
-イベントトリガー制御では,方策$\pi$は制御入力$a$とそれをアクチュエータに送信するかを決めるための連続値変数$d_1, d_2$を出力するモデルであるとした(communication$~=(d_1> d_2)$). 一方でセルフトリガー制御の方策関数$\pi$は制御入力$a$と次の通信までの時間間隔$\tau$を出力するモデルであるとした. \par
-DDPGなどの深層強化学習では, 方策をニューラルネットワークを用いてパラメータ近似を行う. セルフトリガー制御でもイベントトリガー制御に倣い, 全てのパラメータに対してAdamと呼ばれるオプティマイザを用いて学習してみた. すると, 本節冒頭で述べたような「うまくいかない」という状況におちいったのである. (ちなみに, Adamは更新方向を勾配の移動平均にし, 勾配の移動平均のノルムに反比例(この時の比例定数が学習率ハイパーパラメータ)するステップサイズにするようなアルゴリズムである.)
-
-\subsection{イベントトリガー制御と, セルフトリガー制御に対する強化学習で違いが生じた原因}
-pythonで行っている実験では, 近似方策勾配のノルムが$1$以下となるように線形にクリップする工夫を施してから, その補正勾配をAdamに渡して更新則(更新方向, ステップサイズ)を導出している.
-したがって, セルフトリガー制御の評価関数に勾配が「非常に」大きくなるようなパラメータ領域が存在しているかどうかは, 今回の実験結果に対して直接悪影響を与えたとは考えられない.それよりも, パラメータの変化に対する割引分布$\rho^{\pi}$(式\eqref{d_dis})の変化が,イベントトリガー制御に対して大きくなりすぎているため, criticの学習のlossと方策勾配の近似に悪影響を及ぼしているという可能性がある. \par
-%もしかしたらじわじわと発散につながる初期状態が広がってきて, その踏みやすくなった初期状態を踏んでしまっただけかもしれないが...
-$\rho^{\pi}$が急激に変化すると, 当然経験データの分布にも影響が出る.
+\subsection{学習の様子}
+DDPGでは, 方策$\pi$を表現するactorと, 方策$\pi$の良し悪しを特徴付ける$Q^{\pi}(s,a)$を表すcriticをそれぞれ更新していく. criticは過去の経験データを教師データとして用いる教師あり学習でパラメータを学習する. また, actorはcriticが正しく$Q^{\pi}(s,a)$を近似できていれば(方策勾配の割引分布に関する期待値を除けば)評価関数$J(\pi)$を大きくする方向に正しくパラメータを更新することができる. したがってcriticの学習における損失関数の値を追うことで, DDPGアルゴリズムが方策改善を行えているかどうかおおよそ知ることができる.\par
+方策$\pi_{\rm{init}}$から方策$\pi_{\rm{RL}}$を得る1000000ステップの学習では, criticの損失関数がある一定値のまわりの値を取りながら振動しており, 収束していく様子は見られなかった. この原因を考察していく.\par
+actorのパラメータ更新には方策勾配\eqref{true_pg}が用いられる. したがって$\nabla_{a}Q(s,a|\omega)$の値は非常に重要である. (データは後で載せますが, )方策$\pi_{\rm{RL}}$でエピソードを数回経験すると, 原点付近の状態を数多く経験していることが確認できる. これは方策勾配の状態$s$に関する期待値が, 原点付近にあることを示しているので, 特に$s=[0,0]$でのcritic~$Q(s,a|\omega)$の, $u=0$の断面を見てみると,
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=10cm]{mini_batch.png}
- 	\caption{経験データの分布} \label{mini_batch}
+ 	\includegraphics[width=6cm]{tau_gradient_origin.png}
+ 	\caption{原点で何も入力を加えない時のcriticと$\tau$のグラフ} \label{tau_gradient_origin}
 \end{figure}\\
-図\ref{mini_batch}には, 直近の経験データの分布を示した. 青点で示されたパスはその中でも最も直近の経験データであり, それまでの経験データとは明らかに異なる領域であると言える. このように未知のデータが突然入ってくなると, 式\eqref{critic_loss}で表されたcriticのlossは大きくなってしまう. そうなると, 正しい方策勾配は計算できなくなる.
-%それは何につながる？？
-%イベントトリガーではどうだったの？？
-\\
-(再掲: 式\eqref{critic_loss})
-\begin{equation*}
-	Loss = \frac{1}{N}\sum_{s\in E} (Q(s,a|\omega) - \{r(s,a)+\gamma Q(s,\pi(s)|\omega)\})^2
-\end{equation*}
-さらに, 方策勾配は割引分布に関する期待値をとるが, 式\eqref{sample_approximation_for_pg}のように実際の計算には図\ref{mini_batch}のデータに対する平均を取ってしまうので, 正しい方策勾配を求めることはできない.(赤枠以外の分布は,現在の方策に対する割引分布には現れない分布かも知れない)\\
-(再掲: 式\eqref{sample_approximation_for_pg})
-\begin{equation*}
-	\expect_{s\sim\rho^{\pi}}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] \simeq \frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] 
-\end{equation*}
- \par
-そこで, セルフトリガー制御ではAdamの学習率に関するパラメータをイベントトリガーの時のそれに比べて小さくするべきであると考える.\par
-
-
-%(一番重要な段落)
-\subsection{今後の研究のすすめ方}
-前節での検証を踏まえると, actorの学習率を非常に小さくすれば方策の変化も小さくなるため, 長大なステップを重ねれば学習を安定して行えると考えられる. 
-%結局何がしたいのか
-しかしながらこれは自明なことであり, 何らかの工夫を施して高速化を行いたい. もしニューラルネットワークのパラメータのうち, その微少変化に対する割引分布への変化率が小さいものがあれば, そのパラメータに対しては学習率を小さく取っておく必要はない. それを最も議論しやすい形として図\ref{split_NN}のような方策近似モデルを用い, ~$\nabla_{\theta^a}\rho^{\pi_{\theta^{\pi}}}(s), \nabla_{\theta^{\tau}}\rho^{\pi_{\theta^{\pi}}}(s)$を解析することで議論を進めていこうと考える.
-%アルゴリズムに取って良いことをしているのかはわからない.
-
-
-\section{修論の方向性の妥当性検討}
-前回の報告では, 直近ステップでの経験データの分布を見て, 「方策パラメータ$\theta$の微少変化に対する, 割引分布$\rho^{\pi_{\theta}}$の変化が非常に大きいのではないか」と予想を立てた. 本節ではその妥当性を検討していく.\par
-図\ref{mini_batch}は過去の8000ステップほどの経験分布を示した. その分布から, システムが不安定化していることがわかるが, これは前述の通り「方策パラメータ$\theta$の微少変化に対する, 割引分布$\rho^{\pi_{\theta}}$の変化が非常に大きい」ことが原因なのか, 「学習アルゴリズムが方策改善を満足に行えず, 方策の劣化が徐々に進行していった」ことが原因なのかが未知である. そこで, 各ステップでの方策パラメータを保存しておくことで, 学習途中の方策同士を比較する.\par
-
-\subsection{準備}
-図\ref{mini_batch}では, 直近8000ステップ分の経験分布を示した. 図\ref{mini_batch}だと, 各状態が何ステップ目で経験された評価できないため, 図\ref{mini_batch_r}にエピソード(初期状態を発生させる)毎に色分けを行った経験分布を示す. (図\ref{mini_batch}とは異なる学習ログです.)
+のようになった. このため, $\tau$に関する$Q(s,a|\omega)$の微分値がほぼ0となるため, オプティマイザAdamの性質により, この台の上を振動してしまう. ただし, 微分値がほぼ0となったり, $\tau>0.5$の領域で急激に減少するのは探索不足が原因である(探索雑音を加えすぎると発散してしまう(探索と活用のジレンマ)).\par 
+従ってactorが収束しないことになるので, criticも収束しない. そのことを, critic~$Q(s,a|\omega)$のaに$\pi_{\rm{RL}}(s)$を代入した関数(以下$V^{\pi}_{c}(s)$と記載)と, 定義\eqref{value_function}通りの価値関数$V^{\pi}(s)$を図示して比較することで確認していく.
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=10cm]{mini_batch_r.png}
- 	\caption{改訂: 経験データの分布} \label{mini_batch_r}
+ 	\includegraphics[width=7.5cm]{critic_approximation.png}
+ 	\caption{DDPGで得られたcriticによる価値関数$V^{\pi}$の近似} \label{critic_approximation}
 \end{figure}\\
-図\ref{mini_batch_r}における●は初期点, ×はエピソードの終了状態を示している. 図\ref{mini_batch_r}だけではどのタイミングをもって「方策が劣化した」といえるのかわからないため, まずは各エピソードの開始時刻における方策をそれぞれ同じ初期点から時間発展させてみた. 
+図\ref{critic_approximation}では橙色に$V^{\pi}_{c}$, 青色に価値関数$V^{\pi}$の関数形を示している(同一色の点を複数プロットすることにより, 関数曲面を表現しているとみてください.) criticが$Q$関数をよく近似できていれば, 橙色の曲面は青色の曲面に一致するため, 近似できているとは結論づけられない.
+
+\section{criticからリアプノフ関数へ}
+前節ではactorが収束しないため, criticが$Q$関数を近似する限界があることを示唆した. では, actorを固定して$Q$関数を教師あり学習すれば, criticを収束させられるか確認してみた.
+
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=10cm]{compare_episode_agent.png}
- 	\caption{エピソード開始ステップにおける方策の性能比較} \label{cea}
-\end{figure}\\
-図\ref{cea}より, (少なくともこの初期状態に対しては)$2$エピソード目の途中で, 方策が大きく劣化したことがわかる. 従って,~$2$エピソード目での方策の変化を, 同様の手法で細かくみていく.\par
-$2$エピソード目の全ステップでの方策を全てプロットすると図が煩雑になるので, 等間隔に10ステップ分の方策を比較してみる. 
+ 	\includegraphics[width=8cm]{supervised_critic.png}
+ 	\caption{教師あり学習で追加学習したcriticによる価値関数$V^{\pi}$の近似} \label{supervised_critic}
+\end{figure}\par
+図\ref{supervised_critic}は, 図\ref{critic_approximation}に教師あり学習で学習したcriticに対する$V^{\pi}_{c}$を赤色で追加した図である. 赤色と青色の曲面を比べると, 近いものが得られているので, (価値関数$V$は)近似が可能であると結論づけられる.
+
+
+
+
+\subsection{補足1: 強化学習で得られた$V^{\pi}_{c}$が凸関数のような形になる理由}
+前述のように, 安定化できる方策でreplay bufferを作れば, 図\ref{replay_buffer_density}のように, その分布は原点付近のものが高濃度になる.
 \begin{figure}[h]
-	%\centering
- 	\includegraphics[width=16cm]{episode_distribution.png}
- 	\caption{エピソード開始ステップにおける方策の性能比較} \label{ed}
+	\centering
+ 	\includegraphics[width=8cm]{replay_buffer_density.png}
+ 	\caption{replay bufferの状態に関する密度} \label{replay_buffer_density}
 \end{figure}\\
-図\ref{ed}より, 予想のように「方策パラメータ$\theta$の微少変化に対する, 割引分布$\rho^{\pi_{\theta}}$の変化が非常に大きい」わけではなく, パラメータの変化に対して, 徐々に制御パスが変化していることがわかった. 従って, 修論テーマについて再考するべきだと考えます.
+従って, このデータからミニバッチ学習でcriticを教師あり学習で近似すれば, 原点付近にoverfitしてしまう. 
+そこで図\ref{supervised_critic}で赤色で示したcriticは, 状態$s$に関して満遍なく存在するデータから学習し, overfitを避けて学習した.
 
 
-
+\subsection{補足2: criticの近似精度が低いにもかかわらず方策が改善できる理由}
+前節で述べた通り, criticの近似精度なしには方策勾配の正しさは失われるため, actorの方策改善を保証できない. しかしながら, 方策勾配で用いるのは$Q(s,a)$のa勾配なので, (興味のある)全ての$s$について$a$の勾配が同じであれば, ~$Q$関数そのものの値が間違っていても問題ない. \par
+特に, 今回の問題ではその性質を持っていることが確認できたため, criticの近似精度が低いにもかかわらず方策が改善できたと考えられる. 
+\begin{figure}[h]
+	\centering
+ 	\includegraphics[width=8cm]{a_gradient.png}
+ 	\caption{原点における$Q$関数の入力(トルク, 通信間隔)による変化} \label{a_gradient}
+\end{figure}\\
+図\ref{a_gradient}には, 原点でのcriticの値を入力(トルク, 通信間隔)に対してその関数形を示した. ただし, 青色は強化学習で得られたcritic, 橙色は教師あり学習によって得られたcriticに対する関数形を示している. 青色と橙色を比べると, おおよそ同じ形をしているため, その$a$勾配は似たような値となる.
 
 
 \begin{thebibliography}{10}

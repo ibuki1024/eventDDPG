@@ -3,6 +3,7 @@
 \@writefile{toc}{\contentsline {section}{\numberline {2}方策勾配を用いた強化学習}{1}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.1}強化学習の基礎知識}{1}}
 \newlabel{purpose_of_rl}{{1}{1}}
+\newlabel{value_function}{{2}{1}}
 \newlabel{Q_func}{{4}{1}}
 \citation{DQN}
 \citation{DPG}
@@ -26,40 +27,21 @@
 \newlabel{pendulum}{{15}{4}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}初期方策}{4}}
 \newlabel{pi_init}{{16}{4}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}学習の様子からみる勾配法の進捗の確認}{4}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}勾配法が収束しない原因の検討}{4}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces 学習を通しての$\tau $の変化}}{5}}
-\newlabel{average_tau}{{2}{5}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces 学習を通しての$\delimiter "026B30D g\delimiter "026B30D $の変化}}{5}}
-\newlabel{gradient_log}{{3}{5}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}課題点抽出}{6}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}方策勾配の大きさによる, 入力信号$a$と通信間隔$\tau $の学習率の考察}{6}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces actorネットワーク}}{6}}
-\newlabel{split_NN}{{4}{6}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}2つのパラメータに関する方策勾配の考察}{7}}
-\newlabel{recurrence}{{23}{7}}
-\newlabel{recurrence_a}{{24}{7}}
-\newlabel{recurrence_tau}{{25}{7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}注意}{7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}各ステップの報酬のパラメータ勾配}{8}}
-\newlabel{reward_tau_gradient}{{29}{8}}
-\newlabel{solution}{{30}{8}}
-\newlabel{reward_a_gradient}{{33}{8}}
-\@writefile{toc}{\contentsline {section}{\numberline {8}修論の見通し}{8}}
-\newlabel{tau_gradient}{{36}{9}}
-\newlabel{a_gradient}{{37}{9}}
-\@writefile{toc}{\contentsline {section}{\numberline {9}イベントトリガーとセルフトリガーの違いについての考察}{9}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}状況整理}{9}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}イベントトリガー制御と, セルフトリガー制御に対する強化学習で違いが生じた原因}{9}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces 経験データの分布}}{10}}
-\newlabel{mini_batch}{{5}{10}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}今後の研究のすすめ方}{10}}
-\@writefile{toc}{\contentsline {section}{\numberline {10}修論の方向性の妥当性検討}{10}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}学習によって得られた方策}{4}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces $\pi _{\rm  {RL}}$による制御ログ(角度(rad)と通信間隔(s))}}{4}}
+\newlabel{self_trigger_log}{{2}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}学習の様子}{5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces 原点で何も入力を加えない時のcriticと$\tau $のグラフ}}{5}}
+\newlabel{tau_gradient_origin}{{3}{5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces DDPGで得られたcriticによる価値関数$V^{\pi }$の近似}}{5}}
+\newlabel{critic_approximation}{{4}{5}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}criticからリアプノフ関数へ}{6}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces 教師あり学習で追加学習したcriticによる価値関数$V^{\pi }$の近似}}{6}}
+\newlabel{supervised_critic}{{5}{6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}補足1: 強化学習で得られた$V^{\pi }_{c}$が凸関数のような形になる理由}{6}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces replay bufferの状態に関する密度}}{6}}
+\newlabel{replay_buffer_density}{{6}{6}}
 \bibcite{ECBF}{1}
-\@writefile{toc}{\contentsline {subsection}{\numberline {10.1}準備}{11}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces 改訂: 経験データの分布}}{11}}
-\newlabel{mini_batch_r}{{6}{11}}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces エピソード開始ステップにおける方策の性能比較}}{11}}
-\newlabel{cea}{{7}{11}}
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces エピソード開始ステップにおける方策の性能比較}}{12}}
-\newlabel{ed}{{8}{12}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}補足2: criticの近似精度が低いにもかかわらず方策が改善できる理由}{7}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces 原点における$Q$関数の入力(トルク, 通信間隔)による変化}}{7}}
+\newlabel{a_gradient}{{7}{7}}
