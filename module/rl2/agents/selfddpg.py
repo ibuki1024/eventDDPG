@@ -248,7 +248,7 @@ class selfDDPGAgent(self_Agent):
         coef = 1
         action, tau = actor_output
         action += np.random.randn() * coef
-        tau += np.random.normal(0., 0.0001) * coef
+        tau += np.random.normal(0., 0.01) * coef
         return np.array([action, tau])
 
     def select_action(self, state):
@@ -271,8 +271,8 @@ class selfDDPGAgent(self_Agent):
         #TODO: change the law of selecting action
         action = self.select_action(state)
         #clip
-        action.clip(min=np.array([self.action_clipper[0], self.tau_clipper[0]]),\
-                    max=np.array([self.action_clipper[1], self.tau_clipper[1]]))
+        action = action.clip(min=np.array([self.action_clipper[0], self.tau_clipper[0]]),\
+                             max=np.array([self.action_clipper[1], self.tau_clipper[1]]))
 
         # Book-keeping.
         self.recent_observation = observation
@@ -382,12 +382,6 @@ class selfDDPGAgent(self_Agent):
             self.update_target_models_hard()
         
         return metrics
-    
-    # ibuki made function for tau(s) plotting
-    def save_agents_log(self):
-        tmp = _all_weights(self.actor.layers)
-        self.agents_log = push_out(self.agents_log, tmp)
-
 
     def agent_copy_from_layers(self, weights):
         for i, layer in enumerate(weights):
@@ -476,7 +470,7 @@ class selfDDPGAgent2(selfDDPGAgent):
         # combined_outputはQ(s,a|θ^Q) (critic) の出力そのもので,
         # K.mean(combined_output)にマイナスをつけることで, 最小化がQ関数の最大化と同じ役割をはたす.
         # lossを-K.mean(combined_output)にすることでgradientはそれを小さくする方向に動く.
-        # meanなのは, memoryの分布がrho^piに従ってるという仮定でやってる(?)
+        # meanなのは, memoryの分布がrho^piに従ってるという仮定でやってる
         dummy_optimizer = optimizers.Optimizer()
         self.combined_inputs = combined_inputs
         self.loss_func = -K.mean(combined_output)
@@ -608,13 +602,12 @@ class selfDDPGAgent2(selfDDPGAgent):
                 if self.uses_learning_phase:
                     inputs += [self.training]
                 self.inputs = inputs
-                action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
-                assert action_values.shape == (self.batch_size, self.nb_actions)
-                
                 if self.gradient_logging:
                     current_gradient = self._get_current_gradient(inputs)
                     norm = gradient_evaluation(current_gradient)
                     self.gradient_log.append(norm)
+                action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
+                assert action_values.shape == (self.batch_size, self.nb_actions)
 
         if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
             self.update_target_models_hard()

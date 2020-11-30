@@ -217,10 +217,6 @@ class self_Agent(object):
                 self.critic_loss_log.append(metrics[0])
                 episode_reward += reward
 
-                # save last n step agents for checking how the tau(s) changes step by step
-                if self.step > 1000:
-                    self.save_agents_log()
-
                 step_logs = {
                     'action': action,
                     'observation': observation,
