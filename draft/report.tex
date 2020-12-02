@@ -31,7 +31,7 @@
     \vskip 1em
   \par}
 \makeatother
-\title{\large{\bf{進捗報告 11.27}}}
+\title{\large{\bf{進捗報告 12.2}}}
 \author{M2 竹内 維吹}
 \date{\today}
 \begin{document}
@@ -191,28 +191,80 @@ actorのパラメータ更新には方策勾配\eqref{true_pg}が用いられる
 図\ref{supervised_critic}は, 図\ref{critic_approximation}に教師あり学習で学習したcriticに対する$V^{\pi}_{c}$を赤色で追加した図である. 赤色と青色の曲面を比べると, 近いものが得られているので, (価値関数$V$は)近似が可能であると結論づけられる.
 
 
-
-
-\subsection{補足1: 強化学習で得られた$V^{\pi}_{c}$が凸関数のような形になる理由}
-前述のように, 安定化できる方策でreplay bufferを作れば, 図\ref{replay_buffer_density}のように, その分布は原点付近のものが高濃度になる.
+\section{$Q$関数とcriticネットワークの比較による, 課題点の抽出}
+\subsection{$Q$関数の近似精度}
+方策勾配は,
+\[\nabla_{\theta}J(\pi_{\theta}) = \expect_{s\sim\rho^{\pi}}[
+	\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q^{\pi_{\theta}}(s, a)|_{a=\pi_{\theta}(s)}]\]
+と書けるので, その計算に用いられるのは$Q^{\pi}(s,a)$の$a$勾配である. 実際の方策勾配の計算には$Q^{\pi}(s,a)$の近似であるcriticネットワーク$Q(s,a|\omega)$を用いるので, $Q^{\pi}(s,a)$と$Q(s,a|\omega)$の$a$に関する勾配が等しいことが望ましい. その性質を満たしているか確認する為, $Q(s,a|\omega)とQ^{\pi}(s,a)$に対して, $s=[0,0]$とした時の関数形を図\ref{critic_q_const_s}に示す.
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=8cm]{replay_buffer_density.png}
- 	\caption{replay bufferの状態に関する密度} \label{replay_buffer_density}
+ 	\includegraphics[width=8cm]{critic_q_const_s.png}
+ 	\caption{$s=[0,0]$に対する$Q$関数の近似精度} \label{critic_q_const_s}
 \end{figure}\\
-従って, このデータからミニバッチ学習でcriticを教師あり学習で近似すれば, 原点付近にoverfitしてしまう. 
-そこで図\ref{supervised_critic}で赤色で示したcriticは, 状態$s$に関して満遍なく存在するデータから学習し, overfitを避けて学習した.
+ただし,~$Q^{\pi}$は漸化式
+\[Q^{\pi}(s,a) = r(s,a)+\gamma V^{\pi}(s^{\prime})\]
+における$V^{\pi}$に, 図\ref{supervised_critic}で得た価値関数を用いることで計算した. 図\ref{critic_q_const_s}から, ~criticは$Q$関数の$a$勾配を近似できていないことが見て取れる.この原因として考えられるのは,
+\begin{enumerate}
+	\item criticの教師あり学習に用いたデータ組$\{s,a\}$の偏り
+	\item ニューラルネットワークの表現力不足
+\end{enumerate}
+が挙げられる. 特に1つ目について,考察していく.
+
+\subsection{criticの近似と経験データの分散}
+criticの近似精度の低さの原因の一つに, criticの教師あり学習に用いたデータ組$(s,a)$の偏りを挙げた. 教師あり学習における教師データの分布がある領域に偏ってしまうと, 当然その分布外の$(s,a)$における関数近似は行うことができない. 経験データの分散を上げる為に多様な入力を試してみることを探索というが, 連続行動空間の強化学習では
+\begin{equation}
+	a = \pi_{\theta}(s) + e
+\end{equation}
+のように入力にノイズの付加してデータ収集を行うのが一般的である. しかしながら, 実際に実験で加えていたノイズは, 非常に小さいものであった. このことが経験データの分布に偏りをもたらしてしまっていると考えられる.\par
+さて, criticは損失関数
+\[L=\frac{1}{N}\sum_{(s,a)\in E}\{Q(s,a|\omega) - \{r(s,a)+\gamma Q(s,\pi(s)|\omega)\}^2\]
+を小さくするように, パラメータ更新をするのであった. ここで, ~$E$は過去の経験データを表す為, その分布に偏りがあったことが, 低い近似精度の原因の一つであると考えられる. 
 
 
-\subsection{補足2: criticの近似精度が低いにもかかわらず方策が改善できる理由}
-前節で述べた通り, criticの近似精度なしには方策勾配の正しさは失われるため, actorの方策改善を保証できない. しかしながら, 方策勾配で用いるのは$Q(s,a)$のa勾配なので, (興味のある)全ての$s$について$a$の勾配が同じであれば, ~$Q$関数そのものの値が間違っていても問題ない. \par
-特に, 今回の問題ではその性質を持っていることが確認できたため, criticの近似精度が低いにもかかわらず方策が改善できたと考えられる. 
+\subsection{割引分布と探索ノイズ}
+では, 探索ノイズを大きくすればそれで良いのか. 答えはNOである. 大きな探索ノイズを加えれば, 経験データ$E$の分布は割引分布$\rho^{\pi}(s)$から大きく乖離することになる. これはどのような問題を引き起こすのか.\par
+actorの更新に用いる方策勾配の計算には,~$Q^{\pi}$のcriticによる近似の他にも, 以下のように状態$s$に対する期待値のサンプル平均による近似も用いられる.
+\[
+\expect_{s\sim\rho^{\pi_{\theta}}}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}] \simeq \frac{1}{N}\sum_{s\in E}[\nabla_{\theta}\pi_{\theta}(s)\nabla_{a}Q(s, a|\omega)|_{a=\pi_{\theta}(s)}]
+\]
+よって, 経験データ$E$の分布は割引分布$\rho^{\pi_{\theta}}(s)$に等しいことが望ましい. 従って, 入力に大きなノイズを加えることは,方策勾配の近似に対しては望ましくない操作であると言える.
+
+\subsection{探索と利用のジレンマ}
+前節と前々節で確認した探索ノイズに対する2つの要求は互いに相反するのものであり, 強化学習における有名な課題である. 最適セルフトリガー制御の強化学習に対する最後の課題として, このジレンマの最小化に取り組みたい. より具体的には, 効率的な探索ノイズについて考察する.\par
+効率的な探索とは, 以下の二つの要求を満たすような探索である.
+\begin{enumerate} 
+	\item 経験する状態$s$の分布は, 割引分布$\rho^{\pi}(s)$に近いものにしたい
+	\item 各状態$s$に対して, 様々な入力$a$を経験したい
+\end{enumerate}
+前述の通り, 連続行動空間に対する探索には, データ収集時の入力にノイズを加えるという手法が用いられる. このノイズの大きさを適応的に制御することによって, 上記のジレンマを解決する手法を考えたい. 以下ではそれに対する考察を行う.
+
+\subsection{適応的探索ノイズ}
+前節で述べたジレンマは, 「入力$a$を変えても,次ステップの状態$s^{\prime}$が大きく変わらない場合」は大きなノイズを加え, 「入力$a$を変えると,次ステップの状態$s^{\prime}$が大きく変わってしまう場合」はノイズは小さくすることによって, 最小化できるのではないかと考えている. \par
+例えば, 探索ノイズを正規乱数$\mathcal{N}(0,1)$のスカラー倍として与える場合に, そのスカラー$k$(以下ノイズスケールと記載)を適応的に変化させることを考える. 次ステップの状態$s^{\prime}$は, 現在の状態$s$と入力信号$u$および通信間隔$\tau$の関数として与えられるので, 
+\[\pdif{s^{\prime}}{u}, \pdif{s^{\prime}}{\tau}\]
+の大きさによって, ~$u,\tau$それぞれに加えるノイズスケール$k_u, k_{\tau}$を適応的に与えれば良い. \par
+しかしながら,~$s^{\prime}$の計算にはシステム\eqref{pendulum}が既知である必要があるので, 議論の一般性を失う. そこで, システムに対する必要な知識を緩和することを考える. \cite{ECBF}では, 入力アフィン系
+\begin{equation}
+	\dot{s} = f(s)+g(s)u
+\end{equation}
+における$f,g$のリプシッツ連続という性質のみを用いて,  
+\begin{equation}
+	\|s^{\prime}-s\|\leq \frac{1}{L}\|f(s)+g(s)u\|(e^{L\tau}-1)=\bar{r}(s,u,\tau)
+\end{equation}
+のように, セルフトリガー制御における状態変化に上界を与えた. これはつまり, 次ステップの状態$s^{\prime}$が
+\begin{equation}
+	s^{\prime} \in B, B=\{s^{\prime} :\|s^{\prime}-s\|\leq \bar{r}\}
+\end{equation}
+を満たすことを保証したことになる(図\ref{s_prime}参照).
 \begin{figure}[h]
 	\centering
- 	\includegraphics[width=8cm]{a_gradient.png}
- 	\caption{原点における$Q$関数の入力(トルク, 通信間隔)による変化} \label{a_gradient}
+ 	\includegraphics[width=5cm]{s_prime}
+ 	\caption{セルフトリガー制御における状態変化の上界} \label{s_prime}
 \end{figure}\\
-図\ref{a_gradient}には, 原点でのcriticの値を入力(トルク, 通信間隔)に対してその関数形を示した. ただし, 青色は強化学習で得られたcritic, 橙色は教師あり学習によって得られたcriticに対する関数形を示している. 青色と橙色を比べると, おおよそ同じ形をしているため, その$a$勾配は似たような値となる.
+この半径$\bar{r}$に対して, 
+\[\pdif{\bar{r}}{u}, \pdif{\bar{r}}{\tau}\]
+を用いることにより, ノイズの適応的な制御ができないかを考えていきたい.
 
 
 \begin{thebibliography}{10}

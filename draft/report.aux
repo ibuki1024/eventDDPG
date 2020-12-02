@@ -38,10 +38,15 @@
 \@writefile{toc}{\contentsline {section}{\numberline {5}criticからリアプノフ関数へ}{6}}
 \@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces 教師あり学習で追加学習したcriticによる価値関数$V^{\pi }$の近似}}{6}}
 \newlabel{supervised_critic}{{5}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}補足1: 強化学習で得られた$V^{\pi }_{c}$が凸関数のような形になる理由}{6}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces replay bufferの状態に関する密度}}{6}}
-\newlabel{replay_buffer_density}{{6}{6}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}$Q$関数とcriticネットワークの比較による, 課題点の抽出}{6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}$Q$関数の近似精度}{6}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces $s=[0,0]$に対する$Q$関数の近似精度}}{7}}
+\newlabel{critic_q_const_s}{{6}{7}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}criticの近似と経験データの分散}{7}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}割引分布と探索ノイズ}{7}}
+\citation{ECBF}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}探索と利用のジレンマ}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}適応的探索ノイズ}{8}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces セルフトリガー制御における状態変化の上界}}{8}}
+\newlabel{s_prime}{{7}{8}}
 \bibcite{ECBF}{1}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}補足2: criticの近似精度が低いにもかかわらず方策が改善できる理由}{7}}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces 原点における$Q$関数の入力(トルク, 通信間隔)による変化}}{7}}
-\newlabel{a_gradient}{{7}{7}}
