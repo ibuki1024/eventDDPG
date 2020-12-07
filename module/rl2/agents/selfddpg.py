@@ -40,6 +40,28 @@ def push_out(arr, insert_object):
     del arr[0]
     return arr
 
+def next_state_gradient(state0, action, tau, hypara):
+    # linear system
+    m, l, g = hypara
+    A = np.array([[0, 1], [(3*g)/(2*l), 0]])
+    B = np.array([0, 3/(m*l**2)])
+    
+    # ∂s'/∂τ
+    dsdt = np.dot(np.dot(A, _array_exp(A*tau)), state0) + B*action
+
+    # ∂s'/∂u
+    dsdu = np.dot(np.dot(_array_exp(A*tau), np.linalg.inv(A)), B) \
+         - np.dot(np.dot(_array_exp(A*tau), np.linalg.inv(A)), np.dot(_array_exp(-A*tau), B))
+
+    return [dsdt, dsdu]
+
+def _array_exp(A):
+    v, p = np.linalg.eig(A)
+    align = np.array([[v[0], 0],[0, v[1]]])
+    exp = np.exp(align)
+    out = np.dot(np.dot(p, exp), np.linalg.inv(p))
+    return out
+
 
 # Deep DPG as described by Lillicrap et al. (2015)
 # http://arxiv.org/pdf/1509.02971v2.pdf
@@ -240,22 +262,27 @@ class selfDDPGAgent(self_Agent):
             return batch
         return self.processor.process_state_batch(batch)
 
-    def _add_original_noise(self, actor_output):
-        # Greedy in the limit noise
-        # ac, bc = 3.6e-5, 0.2
-        # coef = 1 / (ac*(self.step+1)+bc) #avoid x/0
+    def _add_original_noise(self, state, actor_output, c_u=0.1, c_tau=0.2):
+        # 次の状態の行動に対する勾配によってノイズスケールを決める
+        state = state[0]
+        hypara = [1,1,10]
+        next_state_action_gradient, next_state_tau_gradient = next_state_gradient(state, actor_output[0], actor_output[1], hypara)
+        size_of_gu = np.linalg.norm(next_state_action_gradient)
+        size_of_gt = np.linalg.norm(next_state_tau_gradient)
 
-        coef = 1
+        coef_u = c_u / (size_of_gu + c_u)
+        coef_tau = c_tau / (size_of_gt + c_tau)
+
         action, tau = actor_output
-        action += np.random.randn() * coef
-        tau += np.random.normal(0., 0.01) * coef
+        action += np.random.randn() * coef_u
+        tau += np.random.randn() * coef_tau
         return np.array([action, tau])
 
     def select_action(self, state):
         batch = self.process_state_batch([state])
         action = self.actor.predict_on_batch(batch).flatten()
         if self.training and self.original_noise:
-            action = self._add_original_noise(action)
+            action = self._add_original_noise(state, action)
         
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
