@@ -53,7 +53,7 @@ class self_Agent(object):
 
     def fit(self, env, nb_steps, action_repetition=1, callbacks=None, verbose=1,
             visualize=False, step_log=False, original_log=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
-            nb_max_episode_steps=None, l=1, episode_time=20., n_expectation_samples=10):
+            nb_max_episode_steps=None, l=1, episode_time=20.):
         """Trains the agent on the given environment.
 
         # Arguments
@@ -186,35 +186,27 @@ class self_Agent(object):
 
                 if self.processor is not None:
                     action = self.processor.process_action(action)
+                reward = np.float32(0)
                 accumulated_info = {}
                 done = False
-                start_state = env.state
-                average_reward = 0
-                # ここから
-                for ex in range(n_expectation_samples):
-                    reward = np.float32(0)
-                    env.set_state(start_state)
-                    for _ in range(action_repetition):
-                        callbacks.on_action_begin(action)
-                        observation, r, done, info = env.step(action, dt, tau)
-                        observation = deepcopy(observation)
-                        if self.processor is not None:
-                            observation, r, done, info = self.processor.process_step(observation, r, done, info)
-                        for key, value in info.items():
-                            if not np.isreal(value):
-                                continue
-                            if key not in accumulated_info:
-                                accumulated_info[key] = np.zeros_like(value)
-                            accumulated_info[key] += value
-                        callbacks.on_action_end(action)
-                        reward += r
-                        if done:
-                            break
-                    reward *= dt  # make sum to integral
-                    reward += - tau * 0.01 * action[0]**2 + l * tau  # add tau reward
-                    average_reward += reward / n_expectation_samples
-                reward = average_rewardZ
-                # ここまで
+                for _ in range(action_repetition):
+                    callbacks.on_action_begin(action)
+                    observation, r, done, info = env.step(action, dt, tau)
+                    observation = deepcopy(observation)
+                    if self.processor is not None:
+                        observation, r, done, info = self.processor.process_step(observation, r, done, info)
+                    for key, value in info.items():
+                        if not np.isreal(value):
+                            continue
+                        if key not in accumulated_info:
+                            accumulated_info[key] = np.zeros_like(value)
+                        accumulated_info[key] += value
+                    callbacks.on_action_end(action)
+                    reward += r
+                    if done:
+                        break
+                reward *= dt  # make sum to integral
+                reward += - tau * 0.01 * action[0]**2 + l * tau  # add tau reward
                 accumulated_time += tau
                 if step_log:
                     print('\r' + f'{self.step}: tau = {tau}, state = {env.state}', end='')
