@@ -4,4 +4,4 @@ from gym2.envs.classic_control.continuous_mountain_car import Continuous_Mountai
 from gym2.envs.classic_control.pendulum import PendulumEnv
 from gym2.envs.classic_control.pendulum2 import PendulumEnv2
 from gym2.envs.classic_control.acrobot import AcrobotEnv
-
+from gym2.envs.classic_control.linear_system import LinearEnv
