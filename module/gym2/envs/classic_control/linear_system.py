@@ -19,8 +19,22 @@ class LinearEnv(gym2.Env):
         """
         write me
         """
-        self.A = np.array([[1,2], [2,3]])
-        self.B = np.array([[2], [4]])
+        self.A = np.array([[-1, 4], [2, -3]])
+        self.B = np.array([2, 4])
+
+        """
+        high = np.array([1., 1., self.max_speed], dtype=np.float32)
+        self.action_space = spaces.Box(
+            low=-self.max_torque,
+            high=self.max_torque, shape=(1,),
+            dtype=np.float32
+        )
+        self.observation_space = spaces.Box(
+            low=-high,
+            high=high,
+            dtype=np.float32
+        )
+        """
 
         self.seed()
 
@@ -31,25 +45,22 @@ class LinearEnv(gym2.Env):
     def step(self, u, dt, tau):
         """Struct discretized system suitable for any tau."""
         x = self.state  # th := theta
-
-        x_prime = np.dot(self.A, x) + np.dot(self.B, u)
+        u = u[0]
         
         self.last_u = u  # for rendering
-        # angle_normalize したらあかんのとちゃうん
-        costs = angle_normalize(th) ** 2 + .1 * thdot ** 2  # + .001 * (u ** 2)
-        # costs = th ** 2 + .1 * thdot ** 2  # + .001 * (u ** 2)
+        costs = .01*(x[0] ** 2 + x[1] ** 2)
 
-        newthdot = thdot + (- 3 * g / (2 * l) * np.sin(th + np.pi) + 3. / (m * l ** 2) * u) * dt
-        newth = th + newthdot * dt
-        newth = angle_normalize(newth)
-        newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
+        Ad, Bd = discretized_system(self.A, self.B, dt)
 
-        self.state = np.array([newth, newthdot])
+        x_prime = np.dot(Ad, x) + np.dot(Bd, u)
+        x_prime = np.clip(x_prime, -7, 7)
+
+        self.state = np.array(x_prime)
         return self._get_obs(), -costs, False, {}
 
     # modify to change start position
     def reset(self):
-        high = np.array([np.pi, 2*np.pi]) # start with inverted point
+        high = np.array([np.pi, np.pi]) # start with inverted point
         self.state = self.np_random.uniform(low=-high, high=high) # th=0, -1<thd<1
         self.last_u = None
         return self._get_obs()
@@ -58,9 +69,9 @@ class LinearEnv(gym2.Env):
         self.state = x
 
     def _get_obs(self):
-        theta, thetadot = self.state
+        x = self.state
         # return np.array([np.cos(theta), np.sin(theta), thetadot])
-        return np.array([theta, thetadot])
+        return np.array(x)
 
     def render(self, mode='human'):
         if self.viewer is None:
@@ -91,3 +102,9 @@ class LinearEnv(gym2.Env):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
+
+
+def discretized_system(A, B, dt):
+    Ad = np.eye(A.shape[0]) + dt * A
+    Bd = dt * B
+    return Ad, Bd

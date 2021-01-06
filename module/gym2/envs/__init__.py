@@ -97,6 +97,12 @@ register(
 )
 
 register(
+    id='Linear-v0',
+    entry_point='gym2.envs.classic_control:LinearEnv',
+    max_episode_steps=2000000000000,
+)
+
+register(
     id='Acrobot-v1',
     entry_point='gym.envs.classic_control:AcrobotEnv',
     reward_threshold=-100.0,

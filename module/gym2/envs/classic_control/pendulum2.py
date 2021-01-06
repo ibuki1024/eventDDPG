@@ -17,13 +17,13 @@ class PendulumEnv2(gym2.Env):
 
     def __init__(self, g=10.0):
         self.max_speed = 2*np.pi
-        self.max_torque = 2.
+        self.max_torque = 10.
         self.g = g
         self.m = 1.
         self.l = 1.
         self.viewer = None
 
-        high = np.array([1., 1., self.max_speed], dtype=np.float32)
+        high = np.array([np.pi, 2*np.pi], dtype=np.float32)
         self.action_space = spaces.Box(
             low=-self.max_torque,
             high=self.max_torque, shape=(1,),

@@ -43,8 +43,8 @@ def push_out(arr, insert_object):
 def next_state_gradient(state0, action, tau, hypara):
     # linear system
     m, l, g = hypara
-    A = np.array([[0, 1], [(3*g)/(2*l), 0]])
-    B = np.array([0, 3/(m*l**2)])
+    A = np.array([[-1, 4], [2, -3]])
+    B = np.array([2, 4])
     
     # ∂s'/∂τ
     dsdt = np.dot(np.dot(A, _array_exp(A*tau)), state0) + B*action

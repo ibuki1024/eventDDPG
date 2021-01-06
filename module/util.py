@@ -13,6 +13,8 @@ def moving_average(data, l=30):
 
 
 def lqr(A, B, Q, R):
+    if len(B.shape) == 1:
+        B = B.reshape(B.shape[0],1)
     P = scipy.linalg.solve_continuous_are(A, B, Q, R)
     K = np.linalg.inv(R).dot(B.T).dot(P)
     return -K
