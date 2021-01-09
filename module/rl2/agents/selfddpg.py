@@ -285,7 +285,6 @@ class selfDDPGAgent(self_Agent):
         action, tau = actor_output
         action += np.random.randn() * coef_u
         tau += np.random.randn() * coef_tau
-        print(coef_tau)
         return np.array([action, tau])
 
 
