@@ -295,7 +295,7 @@ class selfDDPGAgent(self_Agent):
             if self.mb_noise:
                 action = self._add_mb_noise(state, action)
             else:
-                action = self._add_gaussian(self.coef_u, self.coef_tau)
+                action = self._add_gaussian(action, self.coef_u, self.coef_tau)
         
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
@@ -433,12 +433,13 @@ class selfDDPGAgent(self_Agent):
 
 class selfDDPGAgent2(selfDDPGAgent):
     def __init__(self, nb_actions, actor, critic, critic_action_input, memory, action_clipper=[-10., 10.], tau_clipper=[0.01, 1.],
-                 gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
+                 gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000, coef_u=1., coef_tau=.01,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf, params_logging=False, gradient_logging=False,
                  random_process=None, mb_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
         super().__init__(nb_actions=nb_actions, actor=actor, critic=critic,
                  critic_action_input=critic_action_input, memory=memory, action_clipper=action_clipper, tau_clipper=tau_clipper,
                  gamma=gamma, batch_size=batch_size, nb_steps_warmup_critic=nb_steps_warmup_critic,
+                 coef_u=coef_u, coef_tau=coef_tau,
                  nb_steps_warmup_actor=nb_steps_warmup_actor,
                  train_interval=train_interval, memory_interval=memory_interval, delta_range=delta_range,
                  delta_clip=delta_clip,
