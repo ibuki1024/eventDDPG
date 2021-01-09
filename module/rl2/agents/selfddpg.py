@@ -447,7 +447,7 @@ class selfDDPGAgent2(selfDDPGAgent):
                  random_process=random_process,
                  mb_noise=mb_noise,
                  custom_model_objects=custom_model_objects,
-                 target_model_update=target_model_update)d
+                 target_model_update=target_model_update)
         self.gradient_log = []
         self.gradient_logging = gradient_logging
         self.params_logging = params_logging
