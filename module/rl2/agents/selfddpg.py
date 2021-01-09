@@ -70,9 +70,9 @@ class selfDDPGAgent(self_Agent):
     """Write me
     """
     def __init__(self, nb_actions, actor, critic, critic_action_input, memory, action_clipper=[-10.,10.], tau_clipper=[0.01, 1.],
-                 gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
+                 gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000, coef_u=1., coef_tau=0.01,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
-                 random_process=None, original_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
+                 random_process=None, mb_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
         if hasattr(actor.output, '__len__') and len(actor.output) > 1:
             raise ValueError('Actor "{}" has more than one output. DDPG expects an actor that has a single output.'.format(actor))
         if hasattr(critic.output, '__len__') and len(critic.output) > 1:
@@ -113,7 +113,9 @@ class selfDDPGAgent(self_Agent):
         self.nb_steps_warmup_actor = nb_steps_warmup_actor
         self.nb_steps_warmup_critic = nb_steps_warmup_critic
         self.random_process = random_process
-        self.original_noise = original_noise
+        self.mb_noise = mb_noise
+        self.coef_u = coef_u
+        self.coef_tau = coef_tau
         self.delta_clip = delta_clip
         self.gamma = gamma
         self.target_model_update = target_model_update
@@ -262,7 +264,7 @@ class selfDDPGAgent(self_Agent):
             return batch
         return self.processor.process_state_batch(batch)
 
-    def _add_original_noise(self, state, actor_output, c_u=0.1, c_tau=0.2):
+    def _add_mb_noise(self, state, actor_output, c_u=0.1, c_tau=0.2):
         # 次の状態の行動に対する勾配によってノイズスケールを決める
         state = state[0]
         hypara = [1,1,10]
@@ -278,11 +280,23 @@ class selfDDPGAgent(self_Agent):
         tau += np.random.randn() * coef_tau
         return np.array([action, tau])
 
+
+    def _add_gaussian(self, coef_u, coef_tau):
+        # 次の状態の行動に対する勾配によってノイズスケールを決める
+        action, tau = actor_output
+        action += np.random.randn() * coef_u
+        tau += np.random.randn() * coef_tau
+        return np.array([action, tau])
+
+
     def select_action(self, state):
         batch = self.process_state_batch([state])
         action = self.actor.predict_on_batch(batch).flatten()
-        if self.training and self.original_noise:
-            action = self._add_original_noise(state, action)
+        if self.training:
+            if self.mb_noise:
+                action = self._add_mb_noise(state, action)
+            else:
+                action = self._add_gaussian(self.coef_u, self.coef_tau)
         
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
@@ -422,7 +436,7 @@ class selfDDPGAgent2(selfDDPGAgent):
     def __init__(self, nb_actions, actor, critic, critic_action_input, memory, action_clipper=[-10., 10.], tau_clipper=[0.01, 1.],
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf, params_logging=False, gradient_logging=False,
-                 random_process=None, original_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
+                 random_process=None, mb_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
         super().__init__(nb_actions=nb_actions, actor=actor, critic=critic,
                  critic_action_input=critic_action_input, memory=memory, action_clipper=action_clipper, tau_clipper=tau_clipper,
                  gamma=gamma, batch_size=batch_size, nb_steps_warmup_critic=nb_steps_warmup_critic,
@@ -430,7 +444,7 @@ class selfDDPGAgent2(selfDDPGAgent):
                  train_interval=train_interval, memory_interval=memory_interval, delta_range=delta_range,
                  delta_clip=delta_clip,
                  random_process=random_process,
-                 original_noise=original_noise,
+                 mb_noise=mb_noise,
                  custom_model_objects=custom_model_objects,
                  target_model_update=target_model_update)
         self.gradient_log = []
