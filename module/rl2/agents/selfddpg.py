@@ -281,8 +281,7 @@ class selfDDPGAgent(self_Agent):
         return np.array([action, tau])
 
 
-    def _add_gaussian(self, coef_u, coef_tau):
-        # 次の状態の行動に対する勾配によってノイズスケールを決める
+    def _add_gaussian(self, actor_output, coef_u, coef_tau):
         action, tau = actor_output
         action += np.random.randn() * coef_u
         tau += np.random.randn() * coef_tau
