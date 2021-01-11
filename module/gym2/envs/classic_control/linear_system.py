@@ -108,3 +108,12 @@ def discretized_system(A, B, dt):
     Ad = np.eye(A.shape[0]) + dt * A
     Bd = dt * B
     return Ad, Bd
+
+
+def array_exp(A):
+    v, p = np.linalg.eig(A)
+    align = np.array([[v[0], 0],[0, v[1]]])
+    exp = np.exp(align)
+    exp[~np.eye(exp.shape[0],dtype=bool)] = 0
+    out = np.dot(np.dot(p, exp), np.linalg.inv(p))
+    return out
