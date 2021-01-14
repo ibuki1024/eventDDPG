@@ -96,7 +96,7 @@ class EnvRegistry(object):
         if hasattr(env, "_reset") and hasattr(env, "_step") and not getattr(env, "_gym_disable_underscore_compat", False):
             patch_deprecated_methods(env)
         if env.spec.max_episode_steps is not None:
-            if env.spec.id == 'Pendulum-v2' or env.spec.id == 'Linear-v0':
+            if env.spec.id == 'Pendulum-v2' or env.spec.id == 'Linear-v0' or env.spec.id == 'Linear-v1':
                 from gym2.wrappers.time_limit import TimeLimit2
                 # for self_trigger
                 env = TimeLimit2(env, max_episode_steps=env.spec.max_episode_steps)
