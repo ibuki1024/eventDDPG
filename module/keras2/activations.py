@@ -211,6 +211,10 @@ def tau_output(x, minimum=0.01):
     return 0.999 * K.sigmoid(x) + K.constant(minimum)
 
 
+def tau_output_large(x, minimum=0.01):
+    return 9.999 * K.sigmoid(x) + K.constant(minimum)
+
+
 def self_trigger_output(tensor, minimum=0.01):
     """multiple_tanh and sigmoid.
 

@@ -41,7 +41,7 @@ class PendulumEnv2(gym2.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def step(self, u, dt, tau):
+    def step(self, u, dt, tau, ln=1):
         """Struct discretized system suitable for any tau."""
         th, thdot = self.state  # th := theta
 
@@ -53,11 +53,16 @@ class PendulumEnv2(gym2.Env):
         u = u[0]
         self.last_u = u  # for rendering
         # angle_normalize したらあかんのとちゃうん
-        costs = angle_normalize(th) ** 2 + .1 * thdot ** 2  # + .001 * (u ** 2)
+        costs = angle_normalize(th) ** 2 + .1 * thdot ** 2  + .01 * (u ** 2)
         # costs = th ** 2 + .1 * thdot ** 2  # + .001 * (u ** 2)
 
         newthdot = thdot + (- 3 * g / (2 * l) * np.sin(th + np.pi) + 3. / (m * l ** 2) * u) * dt
         newth = th + newthdot * dt
+
+        # system noise
+        newth += ln * 0.5 * np.random.randn() * np.sqrt(dt)
+        newthdot += ln * 0.5 * np.random.randn() * np.sqrt(dt)
+
         newth = angle_normalize(newth)
         newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
 

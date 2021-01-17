@@ -206,7 +206,7 @@ class self_Agent(object):
                     if done:
                         break
                 reward *= dt  # make sum to integral
-                reward += - tau * 0.01 * action[0]**2 + l * tau  # add tau reward
+                reward -= l # add tau reward
                 accumulated_time += tau
                 if step_log:
                     print('\r' + f'{self.step}: tau = {tau}, state = {env.state}', end='')

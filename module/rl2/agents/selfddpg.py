@@ -59,7 +59,7 @@ def _array_exp(A):
     v, p = np.linalg.eig(A)
     align = np.array([[v[0], 0],[0, v[1]]])
     exp = np.exp(align)
-    exp[~np.eye(exp.shape[0],dtype=bool)] = 0
+    exp[~np.eye(exp.shape[0], dtype=bool)] = 0
     out = np.dot(np.dot(p, exp), np.linalg.inv(p))
     return out
 
@@ -281,7 +281,7 @@ class selfDDPGAgent(self_Agent):
         tau += np.random.randn() * coef_tau
         return np.array([action, tau])
 
-    
+
     def _add_gaussian(self, actor_output, coef_u, coef_tau):
         action, tau = actor_output
         action += np.random.randn() * coef_u
@@ -297,7 +297,7 @@ class selfDDPGAgent(self_Agent):
                 action = self._add_mb_noise(state, action)
             else:
                 action = self._add_gaussian(action, self.coef_u, self.coef_tau)
-
+        
         # Apply noise, if a random process is set.
         if self.training and self.random_process is not None:
             noise = self.random_process.sample()
@@ -673,6 +673,222 @@ class selfDDPGAgent2(selfDDPGAgent):
         # value
         gradient_values = gradient_calculate_function(state0_batch)
         return gradient_values
+
+
+class selfDDPGAgent3(selfDDPGAgent):
+    """Adaptive discount factor to approximate exp(- alpha * tau).
+    """
+    def __init__(self, nb_actions, actor, critic, critic_action_input, memory, action_clipper=[-10., 10.], tau_clipper=[0.01, 10.],
+                 alpha=.4, gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000, coef_u=1., coef_tau=.01,
+                 train_interval=1, memory_interval=1, delta_range=None, delta_clip=np.inf,
+                 random_process=None, mb_noise=False, custom_model_objects={}, target_model_update=.001, **kwargs):
+        super().__init__(nb_actions=nb_actions, actor=actor, critic=critic,
+                 critic_action_input=critic_action_input, memory=memory, action_clipper=action_clipper, tau_clipper=tau_clipper,
+                 gamma=gamma, batch_size=batch_size, nb_steps_warmup_critic=nb_steps_warmup_critic,
+                 coef_u=coef_u, coef_tau=coef_tau,
+                 nb_steps_warmup_actor=nb_steps_warmup_actor,
+                 train_interval=train_interval, memory_interval=memory_interval, delta_range=delta_range,
+                 delta_clip=delta_clip,
+                 random_process=random_process,
+                 mb_noise=mb_noise,
+                 custom_model_objects=custom_model_objects,
+                 target_model_update=target_model_update)
+        self.alpha = alpha
+        
+    def compile(self, optimizer, metrics=[], action_lr=0.001, tau_lr=0.00001):
+        metrics += [mean_q]
+
+        if type(optimizer) in (list, tuple):
+            if len(optimizer) != 2:
+                raise ValueError('More than two optimizers provided. Please only provide a maximum of two optimizers, the first one for the actor and the second one for the critic.')
+            actor_optimizer, critic_optimizer = optimizer
+        else:
+            actor_optimizer = optimizer
+            critic_optimizer = clone_optimizer(optimizer)
+        if type(actor_optimizer) is str:
+            actor_optimizer = optimizers.get(actor_optimizer)
+        if type(critic_optimizer) is str:
+            critic_optimizer = optimizers.get(critic_optimizer)
+        assert actor_optimizer != critic_optimizer
+
+        if len(metrics) == 2 and hasattr(metrics[0], '__len__') and hasattr(metrics[1], '__len__'):
+            actor_metrics, critic_metrics = metrics
+        else:
+            actor_metrics = critic_metrics = metrics
+
+        def clipped_error(y_true, y_pred):
+            return K.mean(huber_loss(y_true, y_pred, self.delta_clip), axis=-1)
+
+        # Compile target networks. We only use them in feed-forward mode, hence we can pass any
+        # optimizer and loss since we never use it anyway.
+        self.target_actor = clone_model(self.actor, self.custom_model_objects)
+        self.target_actor.compile(optimizer='sgd', loss='mse')
+        self.target_critic = clone_model(self.critic, self.custom_model_objects)
+        self.target_critic.compile(optimizer='sgd', loss='mse')
+
+        # We also compile the actor. We never optimize the actor using Keras but instead compute
+        # the policy gradient ourselves. However, we need the actor in feed-forward mode, hence
+        # we also compile it with any optimzer and never use it.
+        self.actor.compile(optimizer='sgd', loss='mse')
+
+        # Compile the critic.
+        if self.target_model_update < 1.:
+            # We use the `AdditionalUpdatesOptimizer` to efficiently soft-update the target model.
+            critic_updates = get_soft_target_model_updates(self.target_critic, self.critic, self.target_model_update)
+            critic_optimizer = AdditionalUpdatesOptimizer(critic_optimizer, critic_updates)
+        self.critic.compile(optimizer=critic_optimizer, loss=clipped_error, metrics=critic_metrics)
+
+        # Combine actor and critic so that we can get the policy gradient.
+        # Assuming critic's state inputs are the same as actor's.
+        combined_inputs = []
+        state_inputs = []
+        for i in self.critic.input:
+            if i == self.critic_action_input:
+                combined_inputs.append([])
+            else:
+                combined_inputs.append(i)
+                state_inputs.append(i)
+        combined_inputs[self.critic_action_input_idx] = self.actor(state_inputs)
+        combined_output = self.critic(combined_inputs) # Q(s,a|θ^Q)を示してる
+
+        self.combined_inputs = combined_inputs
+
+        # action_params_update と tau_params_updateで分ける
+        action_tw, tau_tw = self._split_params()
+        # action params update
+        # ∂Q/∂a
+        action_updates = _get_updates_original(action_tw, -K.mean(combined_output), action_lr)
+        # tau params update
+        # ∂Q/∂τ
+        tau_updates = _get_updates_original(tau_tw, -K.mean(combined_output), tau_lr)
+
+        updates = action_updates + tau_updates
+        if self.target_model_update < 1.:
+            # Include soft target model updates.
+            # target network update operations
+            updates += get_soft_target_model_updates(self.target_actor, self.actor, self.target_model_update)
+        updates += self.actor.updates  # include other updates of the actor, e.g. for Batch Normalization
+
+        # Finally, combine it all into a callable function.
+        self.actor_updates = updates
+        self.state_inputs = state_inputs
+        if K.backend() == 'tensorflow':
+            self.actor_train_fn = K.function(state_inputs + [K.learning_phase()],
+                                             [self.actor(state_inputs)], updates=updates)
+        else:
+            if self.uses_learning_phase:
+                state_inputs += [K.learning_phase()]
+            self.actor_train_fn = K.function(state_inputs, [self.actor(state_inputs)], updates=updates)
+        self.actor_optimizer = actor_optimizer
+
+        self.compiled = True
+
+    def _split_params(self):
+        tw = self.actor.trainable_weights
+        action_tw = []
+        tau_tw = []
+        for i in range(len(tw)):
+            if i % 4 < 2:
+                action_tw.append(tw[i])
+            else:
+                tau_tw.append(tw[i])
+        return action_tw, tau_tw
+        
+    def backward(self, reward, terminal=False):
+        # Store most recent experience in memory.
+        if self.step % self.memory_interval == 0:
+            self.memory.append(self.recent_observation, self.recent_action, reward, terminal,
+                               training=self.training)
+
+        metrics = [np.nan for _ in self.metrics_names]
+        if not self.training:
+            # We're done here. No need to update the experience memory since we only use the working
+            # memory to obtain the state over the most recent observations.
+            return metrics
+
+        # Train the network on a single stochastic batch.
+        can_train_either = self.step > self.nb_steps_warmup_critic or self.step > self.nb_steps_warmup_actor
+        if can_train_either and self.step % self.train_interval == 0:
+            # Make a mini-batch to learn. So batch learning is done in every time steps.
+            #This is based on the paper.
+            experiences = self.memory.sample(self.batch_size)
+            assert len(experiences) == self.batch_size
+
+            # Start by extracting the necessary parameters (we use a vectorized implementation).
+            state0_batch = [] # current_state
+            reward_batch = [] # current_reward
+            action_batch = [] # current_action
+            terminal1_batch = []
+            state1_batch = [] # next_state
+            for e in experiences:
+                state0_batch.append(e.state0)
+                state1_batch.append(e.state1)
+                reward_batch.append(e.reward)
+                action_batch.append(e.action)
+                terminal1_batch.append(0. if e.terminal1 else 1.)
+
+            # Prepare and validate parameters.
+            # Change batch class from list to np.ndarray
+            state0_batch = self.process_state_batch(state0_batch)
+            state1_batch = self.process_state_batch(state1_batch)
+            terminal1_batch = np.array(terminal1_batch)
+            reward_batch = np.array(reward_batch)
+            action_batch = np.array(action_batch)
+            assert reward_batch.shape == (self.batch_size,)
+            assert terminal1_batch.shape == reward_batch.shape
+            assert action_batch.shape == (self.batch_size, self.nb_actions), (action_batch.shape, (self.batch_size, self.nb_actions))
+
+            # Update critic, if warm up is over.
+            if self.step > self.nb_steps_warmup_critic:
+                target_actions = self.target_actor.predict_on_batch(state1_batch)
+                assert target_actions.shape == (self.batch_size, self.nb_actions)
+                if len(self.critic.inputs) >= 3:
+                    state1_batch_with_action = state1_batch[:]
+                else:
+                    state1_batch_with_action = [state1_batch]
+                state1_batch_with_action.insert(self.critic_action_input_idx, target_actions)
+                target_q_values = self.target_critic.predict_on_batch(state1_batch_with_action).flatten()
+                assert target_q_values.shape == (self.batch_size,)
+
+                # Compute r_t + gamma * max_a Q(s_t+1, a) and update the target ys accordingly,
+                # but only for the affected output units (as given by action_batch).
+                # gamma should be exp(- alpha * tau)
+                tau_mean = np.mean(self.actor.predict_on_batch(state1_batch)[:,1])
+                gamma = np.exp(- self.alpha * tau_mean)
+                discounted_reward_batch = gamma * target_q_values
+                discounted_reward_batch *= terminal1_batch
+                assert discounted_reward_batch.shape == reward_batch.shape
+                targets = (reward_batch + discounted_reward_batch).reshape(self.batch_size, 1)
+
+                # Perform a single batch update on the critic network.
+                if len(self.critic.inputs) >= 3:
+                    state0_batch_with_action = state0_batch[:]
+                else:
+                    state0_batch_with_action = [state0_batch]
+                state0_batch_with_action.insert(self.critic_action_input_idx, action_batch)
+                # state0_batch_with_action is input, targets is teacher
+                metrics = self.critic.train_on_batch(state0_batch_with_action, targets)
+                if self.processor is not None:
+                    metrics += self.processor.metrics
+
+            # Update actor, if warm up is over.
+            if self.step > self.nb_steps_warmup_actor:
+                # TODO: implement metrics for actor
+                if len(self.actor.inputs) >= 2: # state
+                    inputs = state0_batch[:]
+                else: #now we get len = 1
+                    inputs = [state0_batch]
+                if self.uses_learning_phase:
+                    inputs += [self.training]
+                self.inputs = inputs
+                action_values = self.actor_train_fn(inputs)[0] # actor update with critics loss
+                assert action_values.shape == (self.batch_size, self.nb_actions)
+
+        if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
+            self.update_target_models_hard()
+        
+        return metrics
+
 
 def _get_updates_original(params, loss, lr):
     optimizer = optimizers.Adam(lr=lr, clipnorm = 1.)
