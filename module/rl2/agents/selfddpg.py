@@ -855,7 +855,7 @@ class selfDDPGAgent3(selfDDPGAgent):
                 # gamma should be exp(- alpha * tau)
                 tau_mean = np.mean(self.actor.predict_on_batch(state1_batch)[:,1])
                 gamma = np.exp(- self.alpha * tau_mean)
-                discounted_reward_batch = gamma * target_q_values #shapeは？
+                discounted_reward_batch = gamma * target_q_values
                 discounted_reward_batch *= terminal1_batch
                 assert discounted_reward_batch.shape == reward_batch.shape
                 targets = (reward_batch + discounted_reward_batch).reshape(self.batch_size, 1)
