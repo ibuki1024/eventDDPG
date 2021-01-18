@@ -49,7 +49,7 @@ class LinearEnv2(gym2.Env):
         u = u[0]
         
         self.last_u = u  # for rendering
-        costs = .01*(x[0] ** 2 + x[1] ** 2)
+        costs = .1*(x[0] ** 2 + x[1] ** 2) + .01 * u**2
 
         Ad, Bd = discretized_system(self.A, self.B, dt)
 

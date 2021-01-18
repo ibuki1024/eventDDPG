@@ -512,6 +512,48 @@ class Adam(Optimizer):
 
             self.updates.append(K.update(p, new_p))
         return self.updates
+    
+    @interfaces.legacy_get_updates_support
+    def get_updates_with_grad(self, grads, params):
+        self.updates = [K.update_add(self.iterations, 1)]
+
+        lr = self.lr
+        if self.initial_decay > 0:
+            lr = lr * (1. / (1. + self.decay * K.cast(self.iterations,
+                                                      K.dtype(self.decay))))
+
+        t = K.cast(self.iterations, K.floatx()) + 1
+        lr_t = lr * (K.sqrt(1. - K.pow(self.beta_2, t)) /
+                     (1. - K.pow(self.beta_1, t)))
+
+        ms = [K.zeros(K.int_shape(p), dtype=K.dtype(p)) for p in params]
+        vs = [K.zeros(K.int_shape(p), dtype=K.dtype(p)) for p in params]
+        if self.amsgrad:
+            vhats = [K.zeros(K.int_shape(p), dtype=K.dtype(p)) for p in params]
+        else:
+            vhats = [K.zeros(1) for _ in params]
+        self.weights = [self.iterations] + ms + vs + vhats
+
+        for p, g, m, v, vhat in zip(params, grads, ms, vs, vhats):
+            m_t = (self.beta_1 * m) + (1. - self.beta_1) * g
+            v_t = (self.beta_2 * v) + (1. - self.beta_2) * K.square(g)
+            if self.amsgrad:
+                vhat_t = K.maximum(vhat, v_t)
+                p_t = p - lr_t * m_t / (K.sqrt(vhat_t) + self.epsilon)
+                self.updates.append(K.update(vhat, vhat_t))
+            else:
+                p_t = p - lr_t * m_t / (K.sqrt(v_t) + self.epsilon)
+
+            self.updates.append(K.update(m, m_t))
+            self.updates.append(K.update(v, v_t))
+            new_p = p_t
+
+            # Apply constraints.
+            if getattr(p, 'constraint', None) is not None:
+                new_p = p.constraint(new_p)
+
+            self.updates.append(K.update(p, new_p))
+        return self.updates
 
     def get_config(self):
         config = {'lr': float(K.get_value(self.lr)),

@@ -69,6 +69,10 @@ def add(x, y):
     return tf.add(x, y)
 
 
+def subtract(x, y):
+    return tf.subtract(x, y)
+
+
 def get_uid(prefix=''):
     """Get the uid for the default graph.
 

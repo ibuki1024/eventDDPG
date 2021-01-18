@@ -755,12 +755,24 @@ class selfDDPGAgent3(selfDDPGAgent):
 
         # action_params_update と tau_params_updateで分ける
         action_tw, tau_tw = self._split_params()
+
+        # function to be differenciated
+        gamma_theta = - K.mean(K.exp(-self.alpha*self.actor(state_inputs)[:,1]))
+        Q_loss = - K.mean(combined_output)# - gamma_theta
+        coef = K.mean(combined_output) / gamma_theta
+        # coef = K.mean(combined_output / K.exp(-self.alpha*self.actor(state_inputs)[:,1]))
+
+        # Second term of gradient
+        second_term_action = self._gamma_gradients_initial_dist(action_tw)
+        second_term_tau = self._gamma_gradients_initial_dist(tau_tw)
         # action params update
         # ∂Q/∂a
-        action_updates = _get_updates_original(action_tw, -K.mean(combined_output), action_lr)
+        # action_updates = _get_updates_original(action_tw, -K.mean(combined_output), action_lr)
+        action_updates = _get_updates_proposed(action_tw, Q_loss, gamma_theta, coef, second_term_action, action_lr)
         # tau params update
         # ∂Q/∂τ
-        tau_updates = _get_updates_original(tau_tw, -K.mean(combined_output), tau_lr)
+        # tau_updates = _get_updates_original(tau_tw, -K.mean(combined_output), tau_lr)
+        tau_updates = _get_updates_proposed(tau_tw, Q_loss, gamma_theta, coef, second_term_tau, tau_lr)
 
         updates = action_updates + tau_updates
         if self.target_model_update < 1.:
@@ -853,9 +865,8 @@ class selfDDPGAgent3(selfDDPGAgent):
                 # Compute r_t + gamma * max_a Q(s_t+1, a) and update the target ys accordingly,
                 # but only for the affected output units (as given by action_batch).
                 # gamma should be exp(- alpha * tau)
-                tau_mean = np.mean(self.actor.predict_on_batch(state1_batch)[:,1])
-                gamma = np.exp(- self.alpha * tau_mean)
-                discounted_reward_batch = gamma * target_q_values
+                discount = np.exp(self.actor.predict_on_batch(state1_batch)[:,1])
+                discounted_reward_batch = np.multiply(discount, target_q_values)
                 discounted_reward_batch *= terminal1_batch
                 assert discounted_reward_batch.shape == reward_batch.shape
                 targets = (reward_batch + discounted_reward_batch).reshape(self.batch_size, 1)
@@ -888,12 +899,45 @@ class selfDDPGAgent3(selfDDPGAgent):
             self.update_target_models_hard()
         
         return metrics
+    
+    def _gamma_gradients_initial_dist(self, params, initial_state_distribution=None):
+        """Second term of self trigger policy gradient."""
+        high = np.array([np.pi,np.pi])
+        initial_state_samples = np.random.uniform(low=-high, high=high, size=(50,1,2)).astype('float32')
+        initial_state_samples = K.constant(initial_state_samples)
+        actor_output = self.actor(initial_state_samples)
+        combined_inputs = [actor_output, initial_state_samples]
+        value_function = self.critic(combined_inputs)
+        gamma_init = K.mean(K.exp(- self.alpha * self.actor(initial_state_samples)))
+        dummy_optimizer = optimizers.Optimizer()
+        gradients = dummy_optimizer.get_gradients(-gamma_init, params)
+        coef = K.mean(value_function) / gamma_init
+        gradient_second_term = [coef * g for g in gradients] # tf.Tensor
+        return gradient_second_term
 
 
 def _get_updates_original(params, loss, lr):
     optimizer = optimizers.Adam(lr=lr, clipnorm = 1.)
     updates = optimizer.get_updates(loss=loss, params=params)
     return updates
+
+def _get_updates_proposed(params, Q_loss, gamma_loss, coef, second_term, lr):
+    dummy_optimizer = optimizers.Optimizer()
+    # E_pi[∇_θV(s)]
+    Q_gradients = dummy_optimizer.get_gradients(Q_loss, params)
+    # E_pi[∇_θγ_θ]
+    gamma_gradients = dummy_optimizer.get_gradients(gamma_loss, params)
+    # E_pi[V(s)/γ_θ * ∇_θγ_θ]
+    gamma_gradients = [coef * g for g in gamma_gradients]
+    # E_pi[∇_θV(s) + V(s)/γ_θ * ∇_θγ_θ]
+    gradients = [K.add(qg, gg) for qg, gg in zip(Q_gradients, gamma_gradients)]
+    # E_pi[∇_θV(s) + V(s)/γ_θ * ∇_θγ_θ] - E_d0[V(s)/γ_θ * ∇_θγ_θ]
+    gradients = [K.subtract(f, s) for f,s in zip(gradients, second_term)]
+    # adamによるアップデート
+    optimizer = optimizers.Adam(lr=lr, clipnorm = 1.)
+    updates = optimizer.get_updates_with_grad(grads=gradients, params=params)
+    return updates
+
 
 def gradient_evaluation(gradient_values):
     if len(gradient_values[0].shape) == 2:
