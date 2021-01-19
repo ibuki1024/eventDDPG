@@ -63,7 +63,7 @@ class LinearEnv2(gym2.Env):
 
     # modify to change start position
     def reset(self):
-        high = np.array([np.pi, np.pi]) # start with inverted point
+        high = np.array([7., 7.]) # start with inverted point
         self.state = self.np_random.uniform(low=-high, high=high) # th=0, -1<thd<1
         self.last_u = None
         return self._get_obs()

@@ -53,7 +53,7 @@ class self_Agent(object):
 
     def fit(self, env, nb_steps, action_repetition=1, callbacks=None, verbose=1,
             visualize=False, step_log=False, original_log=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
-            nb_max_episode_steps=None, l=1, episode_time=20.):
+            nb_max_episode_steps=None, l=1, alpha=0.4, episode_time=20.):
         """Trains the agent on the given environment.
 
         # Arguments
@@ -189,7 +189,7 @@ class self_Agent(object):
                 reward = np.float32(0)
                 accumulated_info = {}
                 done = False
-                for _ in range(action_repetition):
+                for ss in range(action_repetition):
                     callbacks.on_action_begin(action)
                     observation, r, done, info = env.step(action, dt, tau)
                     observation = deepcopy(observation)
@@ -202,6 +202,7 @@ class self_Agent(object):
                             accumulated_info[key] = np.zeros_like(value)
                         accumulated_info[key] += value
                     callbacks.on_action_end(action)
+                    r *= np.exp(- 0.4 * self.alpha * ss) # 各時刻のリワードは割引されるべき
                     reward += r
                     if done:
                         break
