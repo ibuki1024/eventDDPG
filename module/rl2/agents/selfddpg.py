@@ -865,7 +865,7 @@ class selfDDPGAgent3(selfDDPGAgent):
                 # Compute r_t + gamma * max_a Q(s_t+1, a) and update the target ys accordingly,
                 # but only for the affected output units (as given by action_batch).
                 # gamma should be exp(- alpha * tau)
-                discount = np.exp(self.actor.predict_on_batch(state1_batch)[:,1])
+                discount = np.exp(- self.alpha * action_batch[:,1]).reshape(reward_batch.shape)
                 discounted_reward_batch = np.multiply(discount, target_q_values)
                 discounted_reward_batch *= terminal1_batch
                 assert discounted_reward_batch.shape == reward_batch.shape
