@@ -202,7 +202,7 @@ class self_Agent(object):
                             accumulated_info[key] = np.zeros_like(value)
                         accumulated_info[key] += value
                     callbacks.on_action_end(action)
-                    r *= np.exp(- 0.4 * self.alpha * ss) # 各時刻のリワードは割引されるべき
+                    r *= np.exp(- 0.4 * self.alpha * dt * ss) # 各時刻のリワードは割引されるべき
                     reward += r
                     if done:
                         break
