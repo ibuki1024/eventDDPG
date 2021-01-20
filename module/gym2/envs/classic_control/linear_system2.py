@@ -43,7 +43,7 @@ class LinearEnv2(gym2.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def step(self, u, dt, tau):
+    def step(self, u, dt, tau, ln=1):
         """Struct discretized system suitable for any tau."""
         x = self.state  # th := theta
         u = u[0]
@@ -55,7 +55,7 @@ class LinearEnv2(gym2.Env):
 
         x_prime = np.dot(Ad, x) + np.dot(Bd, u)
         # apply wiener process noise
-        x_prime += np.dot(self.D, np.sqrt(dt) * np.random.randn(2))
+        x_prime += ln * np.dot(self.D, np.sqrt(dt) * np.random.randn(2))
         x_prime = np.clip(x_prime, -7, 7)
 
         self.state = np.array(x_prime)
