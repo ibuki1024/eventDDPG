@@ -6,3 +6,4 @@ from gym2.envs.classic_control.pendulum2 import PendulumEnv2
 from gym2.envs.classic_control.acrobot import AcrobotEnv
 from gym2.envs.classic_control.linear_system import LinearEnv
 from gym2.envs.classic_control.linear_system2 import LinearEnv2
+from gym2.envs.classic_control.linear_system_nd import LinearEnv3D, LinearEnv4D, LinearEnv5D
